@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, formatCurrency } from '../lib/utils';
 
 interface InvoiceDetailsProps {
     result: any; // Using any to support dynamic fields
@@ -10,10 +10,6 @@ interface InvoiceDetailsProps {
 }
 
 export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDetailsProps) {
-    const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 }).format(val);
-    };
-
     // Lock body scroll when modal is open
     useEffect(() => {
         document.body.style.overflow = 'hidden';
