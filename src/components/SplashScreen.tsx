@@ -84,7 +84,7 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
                 {/* --- TYPOGRAPHY --- */}
                 <div className="text-center relative z-30 px-4">
                     {/* Main Title */}
-                    <h1 className="text-7xl md:text-9xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-gray-400 drop-shadow-2xl font-headline animate-in slide-in-from-bottom-10 fade-in duration-1000 delay-200">
+                    <h1 className="text-7xl md:text-9xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-[#26d8c4] to-[#1a88ff] drop-shadow-2xl font-headline animate-in slide-in-from-bottom-10 fade-in duration-1000 delay-200">
                         SIKAI
                     </h1>
 
