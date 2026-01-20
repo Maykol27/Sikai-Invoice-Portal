@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { InvoiceDetails } from './InvoiceDetails';
 import { FileText, Calendar, Receipt, Search, ArrowRight, Download, ChevronDown } from 'lucide-react';
 import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
+import { formatCurrency } from '../lib/utils';
 
 export function History() {
     const { user } = useAuth();
@@ -225,10 +226,7 @@ function ScanItem({ scan, onClick }: { scan: any, onClick: () => void }) {
         minute: '2-digit'
     });
 
-    const amount = scan.result?.total_amount?.toLocaleString('es-ES', {
-        style: 'currency',
-        currency: scan.result?.currency || 'USD'
-    });
+    const amount = formatCurrency(scan.result?.total_amount);
 
     const providerName = scan.name || scan.result?.provider_name || 'Desconocido';
 
