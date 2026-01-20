@@ -67,32 +67,32 @@ export function Login() {
                 <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-sikai-dark to-sikai-accent left-0"></div>
 
                 <div className="flex justify-center mb-6">
-                    <img src="/sikai-logo.png" alt="Sikai Logo" className="h-24 w-24 object-contain rounded-full border-2 border-sikai-accent/50 shadow-[0_0_20px_rgba(26,136,255,0.4)] p-1 bg-black/40 backdrop-blur-sm" />
+                    <img src="/sikai-logo.png" alt="Sikai Logo" className="h-24 w-24 object-contain rounded-full border-2 border-gray-200 dark:border-sikai-accent/50 shadow-[0_0_20px_rgba(26,136,255,0.4)] p-1 bg-white/50 dark:bg-black/40 backdrop-blur-sm" />
                 </div>
-                <h2 className="text-3xl font-headline font-bold text-white mb-2">Bienvenido a SIKAI</h2>
-                <p className="text-gray-400 mb-8">Inicia sesión para gestionar tus facturas</p>
+                <h2 className="text-3xl font-headline font-bold text-gray-900 dark:text-white mb-2">Bienvenido a SIKAI</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-8">Inicia sesión para gestionar tus facturas</p>
 
                 <form onSubmit={handleAuth} className="space-y-4">
                     <div>
-                        <label className="block text-left text-sm font-medium text-gray-300 mb-1">Email Corporativo</label>
+                        <label className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Corporativo</label>
                         <input
                             type="email"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-sikai-accent focus:border-transparent outline-none transition-all"
+                            className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-sikai-accent focus:border-transparent outline-none transition-all placeholder:text-gray-400"
                             placeholder="usuario@empresa.com"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-left text-sm font-medium text-gray-300 mb-1">Contraseña</label>
+                        <label className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
                         <input
                             type="password"
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-sikai-accent focus:border-transparent outline-none transition-all"
+                            className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-sikai-accent focus:border-transparent outline-none transition-all placeholder:text-gray-400"
                             placeholder="••••••••"
                             minLength={6}
                         />
@@ -117,7 +117,7 @@ export function Login() {
                 <div className="mt-6 pt-6 border-t border-gray-800">
                     <button
                         onClick={() => setIsSignUp(!isSignUp)}
-                        className="text-gray-400 hover:text-white text-sm transition-colors"
+                        className="text-gray-600 dark:text-gray-400 hover:text-sikai-accent dark:hover:text-white text-sm transition-colors"
                     >
                         {isSignUp ? '¿Ya tienes cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate'}
                     </button>
