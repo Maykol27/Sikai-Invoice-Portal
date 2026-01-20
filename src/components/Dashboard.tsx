@@ -243,7 +243,7 @@ export function Dashboard() {
                                         backdropFilter: 'blur(10px)'
                                     }}
                                     itemStyle={{ color: '#fff' }}
-                                    labelStyle={{ color: '#9ca3af', marginBottom: '0.25rem' }}
+                                    labelStyle={{ color: '#fff', marginBottom: '0.25rem' }}
                                     formatter={(value: any) => [formatCurrency(Number(value || 0)), 'Monto']}
                                 />
                                 <Area
@@ -293,6 +293,8 @@ export function Dashboard() {
                                             boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
                                             backdropFilter: 'blur(10px)'
                                         }}
+                                        itemStyle={{ color: '#fff' }}
+                                        labelStyle={{ color: '#fff' }}
                                         formatter={(value: any) => formatCurrency(Number(value || 0))}
                                     />
                                 </PieChart>

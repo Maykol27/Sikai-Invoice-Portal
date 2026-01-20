@@ -1,4 +1,4 @@
-
+import { useEffect } from 'react';
 import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -13,6 +13,14 @@ export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDeta
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 }).format(val);
     };
+
+    // Lock body scroll when modal is open
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
 
     const fieldIcons: Record<string, any> = {
         date: Calendar,
