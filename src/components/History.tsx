@@ -174,22 +174,52 @@ export function History() {
                     No se encontraron facturas con esa búsqueda.
                 </div>
             ) : (
-                <div className="bg-white/80 dark:bg-black/20 backdrop-blur-md border border-gray-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-xl dark:shadow-2xl">
-                    {/* Desktop Table Header */}
-                    <div className="hidden md:grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        <div className="pl-4">Proveedor / Nombre</div>
-                        <div>Fecha</div>
-                        <div className="text-center">Items</div>
-                        <div className="text-right">Total</div>
-                        <div className="w-10"></div>
-                    </div>
+                <div className="space-y-6">
+                    {/* Date grouping logic */}
+                    {Object.entries(
+                        filteredScans.reduce((groups, scan) => {
+                            const date = new Date(scan.created_at).toLocaleDateString('es-ES', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                            if (!groups[date]) groups[date] = [];
+                            groups[date].push(scan);
+                            return groups;
+                        }, {} as Record<string, any[]>)
+                    ).map(([date, items]) => {
+                        const dayScans = items as any[];
+                        return (
+                            <div key={date} className="bg-white/80 dark:bg-black/20 backdrop-blur-md border border-gray-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-xl dark:shadow-2xl">
+                                {/* Group Header */}
+                                <div className="bg-gray-50/80 dark:bg-white/5 px-4 py-3 border-b border-gray-100 dark:border-white/5 flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-900 dark:text-white capitalize flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-sikai-accent" />
+                                        {date}
+                                    </h3>
+                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-sikai-accent/10 text-sikai-accent border border-sikai-accent/20">
+                                        {dayScans.length} facturas
+                                    </span>
+                                </div>
 
-                    {/* Scan List */}
-                    <div className="divide-y divide-gray-100 dark:divide-white/5">
-                        {filteredScans.map((scan) => (
-                            <ScanItem key={scan.id} scan={scan} onClick={() => setSelectedScan(scan)} />
-                        ))}
-                    </div>
+                                {/* Desktop Table Header - Only show for first group or repeated? Maybe just hide/simplified */}
+                                <div className="hidden md:grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 p-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-black/20 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                    <div className="pl-4">Proveedor / Nombre</div>
+                                    <div>Hora</div>
+                                    <div className="text-center">Items</div>
+                                    <div className="text-right">Total</div>
+                                    <div className="w-10"></div>
+                                </div>
+
+                                {/* Scan List */}
+                                <div className="divide-y divide-gray-100 dark:divide-white/5">
+                                    {dayScans.map((scan) => (
+                                        <ScanItem key={scan.id} scan={scan} onClick={() => setSelectedScan(scan)} />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -240,12 +270,11 @@ function ScanItem({ scan, onClick }: { scan: any, onClick: () => void }) {
                 </div>
             </div>
 
-            {/* Date (Desktop) */}
+            {/* Time (Desktop) */}
             <div className="hidden md:flex flex-col text-sm text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-2">
-                    <Calendar className="w-3 h-3" /> {date}
+                    {time}
                 </span>
-                <span className="text-xs text-gray-400 dark:text-gray-600 pl-5">{time}</span>
             </div>
 
             {/* Items Count */}
