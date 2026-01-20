@@ -203,7 +203,7 @@ export function Dashboard() {
                                         color: 'var(--color-base-content)',
                                         borderRadius: '12px'
                                     }}
-                                    formatter={(value: number) => formatCurrency(value)}
+                                    formatter={(value: any) => formatCurrency(Number(value || 0))}
                                 />
                                 <Area type="monotone" dataKey="amount" stroke="#26d8c4" fillOpacity={1} fill="url(#colorAmount)" />
                             </AreaChart>
@@ -226,9 +226,9 @@ export function Dashboard() {
                                         outerRadius={100}
                                         fill="#8884d8"
                                         dataKey="value"
-                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                        label={({ percent }: any) => `${((percent || 0) * 100).toFixed(0)}%`}
                                     >
-                                        {stats.providerData.map((entry, index) => (
+                                        {stats.providerData.map((_entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -239,7 +239,7 @@ export function Dashboard() {
                                             color: 'var(--color-base-content)',
                                             borderRadius: '12px'
                                         }}
-                                        formatter={(value: number) => formatCurrency(value)}
+                                        formatter={(value: any) => formatCurrency(Number(value || 0))}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
