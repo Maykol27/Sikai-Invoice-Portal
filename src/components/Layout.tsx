@@ -139,7 +139,7 @@ function Sidebar() {
                         src="/sikai-logo.png"
                         alt="Sikai"
                         className={twMerge(
-                            "object-contain rounded-xl border border-gray-200 dark:border-sikai-accent/30 group-hover:border-sikai-accent shadow-[0_0_15px_rgba(30,215,96,0.1)] transition-all",
+                            "object-contain rounded-full border border-gray-200 dark:border-sikai-accent/30 group-hover:border-sikai-accent shadow-[0_0_15px_rgba(26,136,255,0.2)] transition-all bg-white dark:bg-black/20 p-0.5",
                             collapsed ? "h-10 w-10" : "h-10 w-10"
                         )}
                     />
