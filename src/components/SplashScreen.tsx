@@ -64,15 +64,15 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
                     {/* Ring 3 - Pulsing Glow */}
                     <div className="absolute inset-[15%] rounded-full bg-[#1a88ff]/5 animate-pulse shadow-[0_0_50px_rgba(26,216,196,0.1)]"></div>
 
-                    {/* Central Logo */}
-                    <div className="relative z-20 w-32 h-32 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-3xl border border-[#26d8c4]/20 shadow-[0_0_30px_rgba(26,136,255,0.2)] animate-in zoom-in-50 duration-1000">
+                    {/* Central Logo - No Frame, Bigger */}
+                    <div className="relative z-20 flex items-center justify-center animate-in zoom-in-50 duration-1000">
                         <img
                             src="/sikai-logo.png"
                             alt="SIKAI"
-                            className="w-24 h-24 object-contain drop-shadow-[0_0_15px_rgba(38,216,196,0.5)] animate-pulse"
+                            className="w-40 h-40 object-contain drop-shadow-[0_0_25px_rgba(38,216,196,0.6)] animate-pulse"
                         />
-                        {/* Scanline Effect over Logo */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#26d8c4]/10 to-transparent w-full h-[20%] animate-[scan-vertical_2s_linear_infinite] rounded-3xl pointer-events-none"></div>
+                        {/* Scanline Effect over Logo - Adjusted for bigger logo without container clipping */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#26d8c4]/20 to-transparent w-full h-[30%] animate-[scan-vertical_2s_linear_infinite] pointer-events-none mix-blend-overlay"></div>
                     </div>
 
                     {/* Orbiting Decor */}
@@ -82,17 +82,15 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
                 </div>
 
                 {/* --- TYPOGRAPHY --- */}
-                <div className="mt-12 text-center relative">
-                    <h1 className="text-6xl md:text-7xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-[#26d8c4] to-[#1a88ff] animate-in slide-in-from-bottom-5 fade-in duration-1000 delay-300 drop-shadow-2xl font-headline">
+                <div className="mt-16 text-center relative">
+                    <h1 className="text-6xl md:text-8xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-[#26d8c4] to-[#1a88ff] animate-in slide-in-from-bottom-5 fade-in duration-1000 delay-300 drop-shadow-2xl font-headline">
                         SIKAI
-                        <span className="text-[#26d8c4] animate-pulse">.</span>
-                        <span className="text-[#1a88ff]">CX</span>
                     </h1>
 
-                    <div className="h-px w-0 bg-gradient-to-r from-transparent via-[#26d8c4] to-transparent mx-auto mt-4 animate-[expand-width_1.5s_ease-out_forwards_0.8s]"></div>
+                    <div className="h-px w-0 bg-gradient-to-r from-transparent via-[#26d8c4] to-transparent mx-auto mt-6 animate-[expand-width_1.5s_ease-out_forwards_0.8s]"></div>
 
-                    <p className="mt-4 text-xs md:text-sm font-code tracking-[0.5em] text-[#1a88ff] uppercase animate-in slide-in-from-bottom-5 fade-in duration-1000 delay-700">
-                        Inteligencia Artificial Financiera
+                    <p className="mt-6 text-xs md:text-sm font-code tracking-[0.4em] text-[#1a88ff] uppercase animate-in slide-in-from-bottom-5 fade-in duration-1000 delay-700">
+                        INTELIGENCIA ARTIFICIAL A TU MEDIDA
                     </p>
                 </div>
             </div>
