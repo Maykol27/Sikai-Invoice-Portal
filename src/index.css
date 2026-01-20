@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=PT+Sans:wght@400;700&family=Source+Code+Pro:wght@400;500&display=swap');
+
+@theme {
+  --color-sikai-dark: #16181d;
+  --color-sikai-card: #1f1f21;
+  --color-sikai-accent: #1a88ff;
+  --color-sikai-secondary: #26d8c4;
+  --color-sikai-bg: #16181d;
+  --color-sikai-border: #27272a;
+
+  --font-headline: "Poppins", sans-serif;
+  --font-body: "PT Sans", sans-serif;
+  --font-code: "Source Code Pro", monospace;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: rgba(31, 31, 33, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-sikai-border);
+}
+
+.scan-line {
+  width: 100%;
+  height: 2px;
+  background: var(--color-sikai-secondary);
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 10px var(--color-sikai-secondary);
+  animation: scan 2s linear infinite;
+  display: none; /* Controlled by React state usually, but CSS animation is here */
+}
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Custom Utilities for Gradient Text matching SIKAI */
+.text-gradient-sikai {
+    background: linear-gradient(135deg, var(--color-sikai-accent) 0%, var(--color-sikai-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
