@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Brain, ScanLine, LayoutDashboard, History, CheckCircle2, ChevronRight, X } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 
