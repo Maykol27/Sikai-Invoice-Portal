@@ -1,10 +1,11 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { cn } from '../lib/utils';
 
 export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
     const [show, setShow] = useState(true);
     const [animateOut, setAnimateOut] = useState(false);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -18,51 +19,104 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
         return () => clearTimeout(timer);
     }, []);
 
+    // Neural Network / Cosmos Animation Effect
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const particles: { x: number; y: number; vx: number; vy: number; size: number }[] = [];
+        const particleCount = Math.min(width * 0.1, 150); // Responsive count
+        const connectionDistance = 150;
+
+        // Init particles
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5,
+                size: Math.random() * 2 + 1
+            });
+        }
+
+        const animate = () => {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw particles
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Bounce off edges
+                if (p.x < 0 || p.x > width) p.vx *= -1;
+                if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                // Draw node
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = '#26d8c4'; // Sikai Cyan
+                ctx.fill();
+
+                // Draw connections
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < connectionDistance) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(38, 216, 196, ${1 - distance / connectionDistance})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(animate);
+        };
+
+        const animationId = requestAnimationFrame(animate);
+
+        const handleResize = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        };
+
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            cancelAnimationFrame(animationId);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
     if (!show) return null;
 
     return (
         <div className={cn(
-            "fixed inset-0 z-[100] flex items-center justify-center bg-[#000205] overflow-hidden perspective-[2000px]",
+            "fixed inset-0 z-[100] flex items-center justify-center bg-[#000205] overflow-hidden",
             animateOut ? "opacity-0 pointer-events-none transition-opacity duration-1000 ease-in-out" : "opacity-100"
         )}>
-            {/* --- IMMERSIVE BACKGROUND --- */}
+            {/* --- COSMOS NEURAL BACKGROUND --- */}
 
             {/* Deep Space Gradient */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#1a1d29_0%,_#000000_100%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#1a1d29_0%,_#000000_100%)] z-0"></div>
 
-            {/* Cyber Tunnel Effect */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                <div className="absolute w-[200vw] h-[200vh] border-[1px] border-[#1a88ff]/10 rounded-full animate-[tunnel-zoom_4s_linear_infinite] [animation-delay:0s]"></div>
-                <div className="absolute w-[200vw] h-[200vh] border-[1px] border-[#1a88ff]/10 rounded-full animate-[tunnel-zoom_4s_linear_infinite] [animation-delay:1s]"></div>
-                <div className="absolute w-[200vw] h-[200vh] border-[1px] border-[#1a88ff]/10 rounded-full animate-[tunnel-zoom_4s_linear_infinite] [animation-delay:2s]"></div>
-                <div className="absolute w-[200vw] h-[200vh] border-[1px] border-[#1a88ff]/10 rounded-full animate-[tunnel-zoom_4s_linear_infinite] [animation-delay:3s]"></div>
-            </div>
-
-            {/* Floating Data Matrix */}
-            <div className="absolute inset-0 opacity-40">
-                <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(0deg,transparent_24%,rgba(26,136,255,0.1)_25%,rgba(26,136,255,0.1)_26%,transparent_27%,transparent_74%,rgba(26,136,255,0.1)_75%,rgba(26,136,255,0.1)_76%,transparent_77%,transparent),linear-gradient(90deg,transparent_24%,rgba(26,136,255,0.1)_25%,rgba(26,136,255,0.1)_26%,transparent_27%,transparent_74%,rgba(26,136,255,0.1)_75%,rgba(26,136,255,0.1)_76%,transparent_77%,transparent)] bg-[size:50px_50px] animate-[pan-grid_20s_linear_infinite]"></div>
-            </div>
-
-            {/* Random glowing particles */}
-            {[...Array(30)].map((_, i) => (
-                <div
-                    key={i}
-                    className="absolute rounded-full bg-[#26d8c4] animate-pulse"
-                    style={{
-                        width: Math.random() * 4 + 'px',
-                        height: Math.random() * 4 + 'px',
-                        top: Math.random() * 100 + '%',
-                        left: Math.random() * 100 + '%',
-                        opacity: Math.random() * 0.4,
-                        animationDuration: Math.random() * 2 + 1 + 's',
-                        filter: 'blur(1px)'
-                    }}
-                />
-            ))}
-
+            {/* Neural Network Canvas */}
+            <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-40 mix-blend-screen" />
 
             {/* Main Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center h-full w-full">
+            <div className="relative z-10 flex flex-col items-center justify-center h-full w-full pointer-events-none">
 
                 {/* --- LOGO HOLOGRAM --- */}
                 <div className="relative mb-8 group">
@@ -76,8 +130,6 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
                             alt="SIKAI"
                             className="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-[0_0_35px_rgba(26,136,255,0.6)] animate-[float_6s_ease-in-out_infinite]"
                         />
-                        {/* Glitch Overlay */}
-                        <div className="absolute inset-0 bg-transparent mix-blend-color-dodge opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-[url('/noise.png')]"></div>
                     </div>
                 </div>
 
@@ -107,11 +159,6 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
 
             {/* Styles */}
             <style>{`
-                @keyframes tunnel-zoom {
-                    0% { transform: translateZ(0) scale(0.1); opacity: 0; }
-                    50% { opacity: 0.5; }
-                    100% { transform: translateZ(500px) scale(2); opacity: 0; }
-                }
                 @keyframes float {
                     0%, 100% { transform: translateY(0); }
                     50% { transform: translateY(-20px); }
@@ -119,10 +166,6 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
                 @keyframes expand-width-full {
                     0% { width: 0; opacity: 0; }
                     100% { width: 60%; opacity: 1; }
-                }
-                @keyframes pan-grid {
-                    0% { background-position: 0 0; }
-                    100% { background-position: 50px 50px; }
                 }
                 @keyframes pulse-glow {
                     0%, 100% { box-shadow: 0 0 20px rgba(38,216,196,0.2); border-color: rgba(38,216,196,0.3); }
