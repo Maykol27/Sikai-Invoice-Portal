@@ -91,8 +91,22 @@ body {
 }
 
 /* 2. Tech Card (Interactive, Hover Effects) */
+/* 2. Tech Card (Interactive, Hover Effects) */
 .tech-card {
-  @apply glass-panel rounded-2xl p-6 relative overflow-hidden;
+  /* Copying glass-panel styles directly to avoid @apply issues with custom classes */
+  background: var(--color-base-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-base-border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+
+  /* Additional tech-card specific styles */
+  @apply rounded-2xl p-6 relative overflow-hidden;
+}
+
+.dark .tech-card {
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.3);
 }
 
 .tech-card::before {
