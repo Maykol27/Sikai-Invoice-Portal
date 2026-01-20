@@ -236,15 +236,15 @@ export function Dashboard() {
                                 />
                                 <Tooltip
                                     contentStyle={{
-                                        backgroundColor: 'rgba(5, 5, 8, 0.9)',
+                                        backgroundColor: 'rgba(5, 5, 8, 0.95)',
                                         borderColor: 'rgba(26, 136, 255, 0.3)',
-                                        color: '#fff',
                                         borderRadius: '12px',
                                         boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
                                         backdropFilter: 'blur(10px)'
                                     }}
-                                    formatter={(value: any) => [formatCurrency(Number(value || 0)), 'Monto']}
+                                    itemStyle={{ color: '#fff' }}
                                     labelStyle={{ color: '#9ca3af', marginBottom: '0.25rem' }}
+                                    formatter={(value: any) => [formatCurrency(Number(value || 0)), 'Monto']}
                                 />
                                 <Area
                                     type="monotone"

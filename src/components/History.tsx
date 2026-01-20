@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { InvoiceDetails } from './InvoiceDetails';
-import { FileText, Calendar, Receipt, Search, ArrowRight } from 'lucide-react';
+import { FileText, Calendar, Receipt, Search, ArrowRight, Download, ChevronDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export function History() {
     const { user } = useAuth();
@@ -10,6 +11,19 @@ export function History() {
     const [loading, setLoading] = useState(true);
     const [selectedScan, setSelectedScan] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close export menu on click outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setShowExportMenu(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (!user) return;
@@ -38,10 +52,58 @@ export function History() {
         const provider = scan.result?.provider_name?.toLowerCase() || '';
         const name = scan.name?.toLowerCase() || '';
         const search = searchTerm.toLowerCase();
-
-        // Also allow searching by formatted date if needed, but provider is most critical
         return provider.includes(search) || name.includes(search);
     });
+
+    const handleExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
+        if (filteredScans.length === 0) return;
+
+        const dataToExport = filteredScans.map(scan => ({
+            Fecha: new Date(scan.created_at).toLocaleDateString(),
+            Hora: new Date(scan.created_at).toLocaleTimeString(),
+            Proveedor: scan.result?.provider_name || 'Desconocido',
+            NIT: scan.result?.nit || '',
+            Total: scan.result?.total_amount || 0,
+            IVA: scan.result?.total_iva || 0,
+            Factura_N: scan.result?.invoice_number || '',
+            Items: scan.result?.items?.length || 0,
+            ID_Interno: scan.id
+        }));
+
+        const fileName = `sikai_historial_${new Date().toISOString().split('T')[0]}`;
+
+        if (type === 'json') {
+            const blob = new Blob([JSON.stringify(filteredScans, null, 2)], { type: 'application/json' });
+            downloadBlob(blob, `${fileName}.json`);
+        } else if (type === 'txt') {
+            const textContent = filteredScans.map(scan =>
+                `[${new Date(scan.created_at).toLocaleString()}] ${scan.result?.provider_name} - Total: $${scan.result?.total_amount} (Ref: ${scan.result?.invoice_number})`
+            ).join('\n');
+            const blob = new Blob([textContent], { type: 'text/plain' });
+            downloadBlob(blob, `${fileName}.txt`);
+        } else {
+            // Excel / CSV using XLSX
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Historial");
+
+            if (type === 'csv') {
+                XLSX.writeFile(wb, `${fileName}.csv`);
+            } else {
+                XLSX.writeFile(wb, `${fileName}.xlsx`);
+            }
+        }
+        setShowExportMenu(false);
+    };
+
+    const downloadBlob = (blob: Blob, name: string) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
@@ -58,16 +120,49 @@ export function History() {
                     <p className="text-gray-500 dark:text-gray-400 mt-1">Gestiona tus facturas escaneadas recientemente.</p>
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative w-full md:w-64 group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-sikai-accent transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Buscar proveedor o fecha..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-sikai-accent/50 focus:border-sikai-accent/50 transition-all font-body shadow-sm dark:shadow-none"
-                    />
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    {/* Search Bar */}
+                    <div className="relative flex-1 md:w-64 group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-sikai-accent transition-colors" />
+                        <input
+                            type="text"
+                            placeholder="Buscar proveedor o fecha..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-sikai-accent/50 focus:border-sikai-accent/50 transition-all font-body shadow-sm dark:shadow-none"
+                        />
+                    </div>
+
+                    {/* Export Dropdown */}
+                    <div className="relative" ref={exportMenuRef}>
+                        <button
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                            className="bg-sikai-accent hover:bg-sikai-secondary text-black font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-sikai-accent/20"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden md:inline">Exportar</span>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {showExportMenu && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#1a1d24] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                <div className="p-1">
+                                    <button onClick={() => handleExport('xlsx')} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                        <span className="text-green-500 font-bold">XLSX</span> Excel
+                                    </button>
+                                    <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                        <span className="text-blue-500 font-bold">CSV</span> Comma Separated
+                                    </button>
+                                    <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                        <span className="text-yellow-500 font-bold">JSON</span> Data Raw
+                                    </button>
+                                    <button onClick={() => handleExport('txt')} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                        <span className="text-gray-500 font-bold">TXT</span> Texto Simple
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

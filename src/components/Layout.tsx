@@ -62,19 +62,21 @@ export function Layout({ children }: LayoutProps) {
     }
 
     return (
-        <div className="flex h-[100dvh] bg-sikai-bg text-sikai-text overflow-hidden font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300 relative">
-            {/* Glowing ambient orbs - Cleaned up background */}
-            <div className="absolute top-0 left-0 w-[800px] h-[800px] bg-sikai-primary/10 rounded-full blur-[120px] pointer-events-none z-0 opacity-50 dark:opacity-30 mix-blend-screen"></div>
-            <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-sikai-secondary/10 rounded-full blur-[100px] pointer-events-none z-0 opacity-40 dark:opacity-20 mix-blend-screen"></div>
+        <div className="min-h-screen bg-sikai-bg text-sikai-text font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300 relative">
+            {/* Glowing ambient orbs - Fixed to background */}
+            <div className="fixed top-0 left-0 w-[800px] h-[800px] bg-sikai-primary/10 rounded-full blur-[120px] pointer-events-none z-0 opacity-50 dark:opacity-30 mix-blend-screen"></div>
+            <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-sikai-secondary/10 rounded-full blur-[100px] pointer-events-none z-0 opacity-40 dark:opacity-20 mix-blend-screen"></div>
 
-            <Sidebar />
-            <MobileNav />
+            <div className="flex relative z-10 min-h-screen">
+                <Sidebar />
+                <MobileNav />
 
-            <main className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-sikai-border scrollbar-track-transparent z-10">
-                <div className="container mx-auto px-4 py-6 md:px-8 md:py-10 pb-40 md:pb-10 max-w-7xl">
-                    {children}
-                </div>
-            </main>
+                <main className="flex-1 w-full relative">
+                    <div className="container mx-auto px-4 py-6 md:px-8 md:py-10 pb-40 md:pb-10 max-w-7xl">
+                        {children}
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }

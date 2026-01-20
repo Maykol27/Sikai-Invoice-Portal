@@ -9,67 +9,88 @@ interface InvoiceScannerProps {
 
 export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
     const [isScanning, setIsScanning] = useState(false);
-    const [currentImage, setCurrentImage] = useState<string | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    const processFile = async (file: File) => {
-        if (!file) return;
+    // Bulk Upload State
+    const [processedCount, setProcessedCount] = useState(0);
+    const [totalFiles, setTotalFiles] = useState(0);
 
-        const reader = new FileReader();
-        reader.onload = (e) => setCurrentImage(e.target?.result as string);
-        reader.readAsDataURL(file);
+    const processNextInQueue = async (files: File[], listResults: any[]) => {
+        if (files.length === 0) {
+            // Batch complete
+            setIsScanning(false);
+            if (listResults.length > 0) {
+                // Return the last result to trigger view change, or a summary?
+                // For now, let's return the last one so the user sees something,
+                // but realistically for 50 files, they should go to History.
+                // Or maybe we pass a specific "batch_complete" signal?
+                // Let's pass the last successful result for now.
+                onScanComplete(listResults[listResults.length - 1]);
+            }
+            return;
+        }
 
-        setIsScanning(true);
-        setUploadError(null);
+        const currentFile = files[0];
+        const remainingFiles = files.slice(1);
 
         try {
             const base64 = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    if (result) {
-                        resolve(result.split(',')[1]);
-                    } else {
-                        reject(new Error("Failed to read file"));
-                    }
-                };
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
                 reader.onerror = reject;
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(currentFile);
             });
 
             const { data, error } = await supabase.functions.invoke('scan-invoice', {
                 body: {
                     imageBase64: base64,
-                    mimeType: file.type,
-                    name: file.name
+                    mimeType: currentFile.type,
+                    name: currentFile.name
                 }
             });
 
             if (error) throw error;
-            if (data?.error) throw new Error(data.error);
 
             if (data && data.result) {
-                onScanComplete(data.result);
-            } else {
-                console.warn("Unexpected response structure:", data);
-                onScanComplete(data);
+                listResults.push(data.result);
             }
 
-        } catch (error: any) {
-            console.error('Error scanning invoice:', error);
-            setUploadError(error.message || 'Error al procesar la factura');
-            setIsScanning(false);
+        } catch (error) {
+            console.error(`Error processing ${currentFile.name}:`, error);
+            // Continue with next file properly even if one fails
+        } finally {
+            setProcessedCount(prev => prev + 1);
+            // Recursive call for sequential processing
+            processNextInQueue(remainingFiles, listResults);
         }
+    };
+
+    const handleBatchUpload = (files: FileList | File[]) => {
+        const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+
+        if (fileArray.length === 0) return;
+
+        if (fileArray.length > 50) {
+            setUploadError('Máximo 50 facturas a la vez.');
+            return;
+        }
+
+        setIsScanning(true);
+        setUploadError(null);
+        setTotalFiles(fileArray.length);
+        setProcessedCount(0);
+
+        // Start processing
+        processNextInQueue(fileArray, []);
     };
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            processFile(file);
+        if (e.dataTransfer.files.length > 0) {
+            handleBatchUpload(e.dataTransfer.files);
         }
     }, []);
 
@@ -117,7 +138,8 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                     ref={fileInputRef}
                     className="hidden"
                     accept="image/*"
-                    onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+                    multiple // Enable multiple files
+                    onChange={(e) => e.target.files && handleBatchUpload(e.target.files)}
                 />
 
                 {/* SIKAI Logo Loading State */}
@@ -131,24 +153,23 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                             />
                             <div className="absolute -inset-4 bg-sikai-accent/20 rounded-full blur-xl animate-pulse"></div>
                         </div>
-                        <p className="mt-6 text-sikai-accent font-mono text-sm tracking-[0.2em] animate-pulse">ANALIZANDO...</p>
+                        <p className="mt-6 text-sikai-accent font-mono text-sm tracking-[0.2em] animate-pulse">
+                            PROCESANDO LOTE... {processedCount + 1}/{totalFiles}
+                        </p>
+                        {/* Progress Bar */}
+                        <div className="w-64 h-1 bg-gray-800 rounded-full mt-4 overflow-hidden">
+                            <div
+                                className="h-full bg-sikai-accent transition-all duration-300 ease-out"
+                                style={{ width: `${((processedCount) / totalFiles) * 100}%` }}
+                            ></div>
+                        </div>
                     </div>
                 )}
 
-                {/* Image Preview */}
-                {currentImage && !isScanning && (
-                    <div className="absolute inset-0 z-0 opacity-40 blur-sm">
-                        <img
-                            src={currentImage}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent dark:from-black"></div>
-                    </div>
-                )}
+                {/* Image Preview - Removed for Batch Mode */}
 
                 {/* Idle Content */}
-                {!isScanning && !currentImage && (
+                {!isScanning && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center transform transition-transform duration-300 group-hover:scale-105">
                         <div className={cn(
                             "w-20 h-20 rounded-2xl flex items-center justify-center mb-6 shadow-2xl transition-all duration-300",
@@ -162,11 +183,11 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                         </div>
 
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight group-hover:text-shadow-glow transition-all">
-                            {isDragging ? '¡Sueltala ya!' : 'Sube tu Factura'}
+                            {isDragging ? '¡Sueltala ya!' : 'Sube tus Facturas'}
                         </h3>
                         <p className="text-gray-500 dark:text-gray-500 text-sm max-w-sm">
-                            Haz clic o arrastra tu archivo aquí. <br />
-                            <span className="text-xs opacity-60">Soporta JPG, PNG</span>
+                            Haz clic o arrastra tus archivos aquí. <br />
+                            <span className="text-xs opacity-60">Soporta JPG, PNG (Max 50)</span>
                         </p>
                     </div>
                 )}
