@@ -71,7 +71,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
     };
 
     const handleBatchUpload = (files: FileList | File[]) => {
-        const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+        const fileArray = Array.from(files).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
 
         if (fileArray.length === 0) return;
 
@@ -153,7 +153,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                         type="file"
                         ref={fileInputRef}
                         className="hidden"
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         multiple // Enable multiple files
                         onChange={(e) => e.target.files && handleBatchUpload(e.target.files)}
                     />
@@ -175,7 +175,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                         </h3>
                         <p className="text-gray-500 dark:text-gray-500 text-sm max-w-sm">
                             Haz clic o arrastra tus archivos aquí. <br />
-                            <span className="text-xs opacity-60">Soporta JPG, PNG (Max 50)</span>
+                            <span className="text-xs opacity-60">Soporta JPG, PNG, PDF (Max 50)</span>
                         </p>
                     </div>
                 </div>

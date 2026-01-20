@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Loader2 } from 'lucide-react';
 
@@ -8,6 +8,21 @@ export function Login() {
     const [loading, setLoading] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
     const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        // Check for error parameters in the URL hash (from Supabase redirects)
+        const hash = window.location.hash;
+        if (hash && hash.includes('error_code=otp_expired')) {
+            setMessage('El enlace de confirmación ha expirado o ya fue utilizado. Por favor, intenta iniciar sesión normalmente con tu correo y contraseña.');
+        } else if (hash && hash.includes('error=')) {
+            // Generic error handler for other hash errors
+            const params = new URLSearchParams(hash.substring(1)); // remove #
+            const errorDescription = params.get('error_description');
+            if (errorDescription) {
+                setMessage(`Error de acceso: ${errorDescription.replace(/\+/g, ' ')}`);
+            }
+        }
+    }, []);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
