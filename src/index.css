@@ -12,10 +12,14 @@
 @theme {
   /* Brand Core - Preserved */
   --color-sikai-primary: #1a88ff;
+  /* BLUE - Dominant */
   --color-sikai-cyan: #26d8c4;
+  /* CYAN - Secondary/Accent */
 
   /* Semantic Mappings */
-  --color-sikai-accent: var(--color-sikai-cyan);
+  --color-sikai-accent: var(--color-sikai-primary);
+  /* ACCENT IS NOW BLUE */
+  --color-sikai-secondary: var(--color-sikai-cyan);
   --color-sikai-bg: var(--color-base-bg);
   --color-sikai-text: var(--color-base-content);
   --color-sikai-card: var(--color-base-card);
@@ -59,8 +63,9 @@
   /* Ultra deep black-blue */
   --color-base-content: #f8fafc;
   --color-base-card: rgba(22, 24, 29, 0.6);
-  --color-base-border: rgba(38, 216, 196, 0.15);
-  /* Subtle cyan tint */
+  --color-base-border: rgba(26, 136, 255, 0.2);
+  /* BLUE tint border */
+  /* Subtle blue tint */
   --color-base-glass: rgba(10, 10, 12, 0.7);
 }
 
@@ -116,15 +121,18 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(38, 216, 196, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(26, 136, 255, 0.6), transparent);
+  /* BLUE */
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .tech-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(38, 216, 196, 0.3);
-  box-shadow: 0 10px 40px -10px rgba(38, 216, 196, 0.15);
+  border-color: rgba(26, 136, 255, 0.4);
+  /* BLUE */
+  box-shadow: 0 10px 40px -10px rgba(26, 136, 255, 0.2);
+  /* BLUE */
 }
 
 .tech-card:hover::before {
@@ -143,11 +151,13 @@ body {
 .scan-line {
   width: 100%;
   height: 2px;
-  background: #26d8c4;
+  background: #1a88ff;
+  /* BLUE */
   position: absolute;
   top: 0;
   left: 0;
-  box-shadow: 0 0 15px #26d8c4, 0 0 30px #1a88ff;
+  box-shadow: 0 0 15px #1a88ff, 0 0 30px #26d8c4;
+  /* Blue primary, Cyan secondary glow */
   animation: scan 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   display: none;
   z-index: 10;
@@ -187,11 +197,13 @@ body {
 
 @keyframes glow {
   from {
-    box-shadow: 0 0 5px rgba(38, 216, 196, 0.2);
+    box-shadow: 0 0 5px rgba(26, 136, 255, 0.2);
+    /* BLUE */
   }
 
   to {
-    box-shadow: 0 0 20px rgba(38, 216, 196, 0.6);
+    box-shadow: 0 0 20px rgba(26, 136, 255, 0.6);
+    /* BLUE */
   }
 }
 
@@ -211,5 +223,6 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(38, 216, 196, 0.6);
+  background: rgba(26, 136, 255, 0.7);
+  /* BLUE */
 }
