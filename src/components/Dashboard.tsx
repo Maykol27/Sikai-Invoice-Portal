@@ -123,16 +123,16 @@ export function Dashboard() {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            <h2 className="text-3xl font-headline font-bold text-white mb-2">Dashboard Financiero</h2>
-            <p className="text-gray-400 mb-8">Resumen de tus gastos procesados por IA</p>
+            <h2 className="text-3xl font-headline font-bold text-gray-900 dark:text-white mb-2">Dashboard Financiero</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">Resumen de tus gastos procesados por IA</p>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-sikai-accent">
+                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-sikai-accent bg-white/70 dark:bg-black/40">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gray-400 text-sm font-medium">Gasto Total</p>
-                            <h3 className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.totalSpent)}</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Gasto Total</p>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(stats.totalSpent)}</h3>
                         </div>
                         <div className="p-2 bg-sikai-accent/20 rounded-lg text-sikai-accent">
                             <DollarSign size={20} />
@@ -140,11 +140,11 @@ export function Dashboard() {
                     </div>
                 </div>
 
-                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-blue-500">
+                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-blue-500 bg-white/70 dark:bg-black/40">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gray-400 text-sm font-medium">Total IVA</p>
-                            <h3 className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.totalIva)}</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total IVA</p>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(stats.totalIva)}</h3>
                         </div>
                         <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
                             <Receipt size={20} />
@@ -152,11 +152,11 @@ export function Dashboard() {
                     </div>
                 </div>
 
-                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-purple-500">
+                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-purple-500 bg-white/70 dark:bg-black/40">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gray-400 text-sm font-medium">Proveedor Top</p>
-                            <h3 className="text-xl font-bold text-white mt-1 truncate max-w-[150px]" title={stats.topProvider}>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Proveedor Top</p>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-1 truncate max-w-[150px]" title={stats.topProvider}>
                                 {stats.topProvider}
                             </h3>
                         </div>
@@ -166,11 +166,11 @@ export function Dashboard() {
                     </div>
                 </div>
 
-                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-pink-500">
+                <div className="glass-panel p-6 rounded-xl border-l-4 border-l-pink-500 bg-white/70 dark:bg-black/40">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-gray-400 text-sm font-medium">Facturas</p>
-                            <h3 className="text-2xl font-bold text-white mt-1">{stats.scanCount}</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Facturas</p>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.scanCount}</h3>
                         </div>
                         <div className="p-2 bg-pink-500/20 rounded-lg text-pink-500">
                             <TrendingUp size={20} />
@@ -182,10 +182,10 @@ export function Dashboard() {
             {/* Charts Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Timeline Area Chart */}
-                <div className="glass-panel p-6 rounded-xl">
-                    <h3 className="text-lg font-bold text-white mb-6">Histórico de Gastos</h3>
-                    <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                <div className="glass-panel p-6 rounded-xl bg-white/70 dark:bg-black/40">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Histórico de Gastos</h3>
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
                             <AreaChart data={stats.timelineData}>
                                 <defs>
                                     <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
@@ -193,11 +193,16 @@ export function Dashboard() {
                                         <stop offset="95%" stopColor="#26d8c4" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 12 }} />
-                                <YAxis stroke="#9ca3af" tick={{ fontSize: 12 }} tickFormatter={(val) => `$${val / 1000}k`} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.2} />
+                                <XAxis dataKey="date" stroke="#888888" tick={{ fontSize: 12 }} />
+                                <YAxis stroke="#888888" tick={{ fontSize: 12 }} tickFormatter={(val) => `$${val / 1000}k`} />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#fff' }}
+                                    contentStyle={{
+                                        backgroundColor: 'var(--color-base-card)',
+                                        borderColor: 'var(--color-base-border)',
+                                        color: 'var(--color-base-content)',
+                                        borderRadius: '12px'
+                                    }}
                                     formatter={(value: number) => formatCurrency(value)}
                                 />
                                 <Area type="monotone" dataKey="amount" stroke="#26d8c4" fillOpacity={1} fill="url(#colorAmount)" />
@@ -207,11 +212,11 @@ export function Dashboard() {
                 </div>
 
                 {/* Providers Pie Chart */}
-                <div className="glass-panel p-6 rounded-xl">
-                    <h3 className="text-lg font-bold text-white mb-6">Gasto por Proveedor (Top 5)</h3>
-                    <div className="h-[300px] flex items-center justify-center">
+                <div className="glass-panel p-6 rounded-xl bg-white/70 dark:bg-black/40">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Gasto por Proveedor (Top 5)</h3>
+                    <div style={{ width: '100%', height: 300 }} className="flex items-center justify-center">
                         {stats.providerData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer>
                                 <PieChart>
                                     <Pie
                                         data={stats.providerData}
@@ -228,7 +233,12 @@ export function Dashboard() {
                                         ))}
                                     </Pie>
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#fff' }}
+                                        contentStyle={{
+                                            backgroundColor: 'var(--color-base-card)',
+                                            borderColor: 'var(--color-base-border)',
+                                            color: 'var(--color-base-content)',
+                                            borderRadius: '12px'
+                                        }}
                                         formatter={(value: number) => formatCurrency(value)}
                                     />
                                 </PieChart>
@@ -241,7 +251,7 @@ export function Dashboard() {
                         {stats.providerData.map((entry, index) => (
                             <div key={index} className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                <span className="text-xs text-gray-400">{entry.name}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{entry.name}</span>
                             </div>
                         ))}
                     </div>

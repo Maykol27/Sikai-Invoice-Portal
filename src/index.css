@@ -1,13 +1,22 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=PT+Sans:wght@400;700&family=Source+Code+Pro:wght@400;500&display=swap');
 
+@plugin "tailwindcss-animate";
+
+/* 
+  FORCE CLASS-BASED DARK MODE 
+  This overrides the default media-based dark mode in Tailwind v4 
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-sikai-dark: #16181d;
-  --color-sikai-card: #1f1f21;
-  --color-sikai-accent: #1a88ff;
-  --color-sikai-secondary: #26d8c4;
-  --color-sikai-bg: #16181d;
-  --color-sikai-border: #27272a;
+  --color-sikai-card: var(--color-base-card);
+  --color-sikai-accent: var(--color-primary);
+  --color-sikai-secondary: var(--color-accent);
+  --color-sikai-bg: var(--color-base-bg);
+  --color-sikai-text: var(--color-base-content);
+  --color-sikai-border: var(--color-base-border);
 
   --font-headline: "Poppins", sans-serif;
   --font-body: "PT Sans", sans-serif;
@@ -16,11 +25,38 @@
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* 
+  CSS Variables Strategy 
+  Light Mode is DEFAULT. Dark mode only applies if .dark class is present.
+*/
+:root {
+  /* Default to Light Mode values */
+  --color-base-bg: #faf6fd;
+  --color-base-content: #16181d;
+  --color-base-card: #ffffff;
+  --color-base-border: #e4e4e7;
+
+  --color-primary: #1a88ff;
+  --color-accent: #26d8c4;
+}
+
+/* Apply Dark Mode values ONLY when .dark class is on standard parent */
+:root.dark {
+  --color-base-bg: #16181d;
+  --color-base-content: #ffffff;
+  --color-base-card: #1f1f21;
+  --color-base-border: #27272a;
+}
+
 /* Glassmorphism utilities */
 .glass-panel {
-  background: rgba(31, 31, 33, 0.7);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-sikai-border);
+}
+
+.dark .glass-panel {
+  background: rgba(31, 31, 33, 0.7);
 }
 
 .scan-line {
@@ -32,20 +68,32 @@
   left: 0;
   box-shadow: 0 0 10px var(--color-sikai-secondary);
   animation: scan 2s linear infinite;
-  display: none; /* Controlled by React state usually, but CSS animation is here */
+  display: none;
 }
 
 @keyframes scan {
-  0% { top: 0%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
-/* Custom Utilities for Gradient Text matching SIKAI */
 .text-gradient-sikai {
-    background: linear-gradient(135deg, var(--color-sikai-accent) 0%, var(--color-sikai-secondary) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  background: linear-gradient(135deg, var(--color-sikai-accent) 0%, var(--color-sikai-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

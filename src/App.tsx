@@ -43,14 +43,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={
           <ProtectedRoute>
-            <div className="text-center mb-12">
-              <h1 className="font-headline text-4xl md:text-6xl font-bold text-white mb-6">
-                Digitalización <span className="text-gradient-sikai">Inteligente</span>
-              </h1>
-              <p className="text-gray-400 text-xl max-w-2xl mx-auto font-body">
-                Tu socio estratégico en la transformación digital. Escanea, extrae y gestiona tus facturas con el poder de la IA.
-              </p>
-            </div>
+
             <ScannerPage />
           </ProtectedRoute>
         } />
