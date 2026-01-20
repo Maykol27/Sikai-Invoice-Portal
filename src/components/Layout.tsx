@@ -23,6 +23,29 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
     const { user } = useAuth();
 
+    // Theme Initialization Logic - moved here to run globally
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('theme');
+        const root = document.documentElement;
+
+        const applyTheme = (dark: boolean) => {
+            if (dark) {
+                root.classList.add('dark');
+                root.setAttribute('data-theme', 'dark');
+            } else {
+                root.classList.remove('dark');
+                root.setAttribute('data-theme', 'light');
+            }
+        };
+
+        if (savedTheme) {
+            applyTheme(savedTheme === 'dark');
+        } else {
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(systemPrefersDark);
+        }
+    }, []);
+
     // If no user is logged in, render only content (Login page), full width
     if (!user) {
         return (
@@ -55,28 +78,9 @@ function Sidebar() {
     const [isDark, setIsDark] = useState(true);
 
     useEffect(() => {
-        // Robust Theme Initialization
-        const savedTheme = localStorage.getItem('theme');
-        const root = document.documentElement;
-
-        const applyTheme = (dark: boolean) => {
-            setIsDark(dark);
-            if (dark) {
-                root.classList.add('dark');
-                root.setAttribute('data-theme', 'dark');
-            } else {
-                root.classList.remove('dark');
-                root.setAttribute('data-theme', 'light');
-            }
-        };
-
-        if (savedTheme) {
-            applyTheme(savedTheme === 'dark');
-        } else {
-            // Check system preference
-            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            applyTheme(systemPrefersDark);
-        }
+        // Sync local toggle state with active document class on mount
+        const isDarkActive = document.documentElement.classList.contains('dark');
+        setIsDark(isDarkActive);
     }, []);
 
     const toggleTheme = () => {
