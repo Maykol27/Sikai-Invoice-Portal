@@ -15,10 +15,10 @@ export function SplashScreen({ onFinish }: { onFinish?: () => void }) {
                 setShow(false);
                 onFinish?.();
             }, 800); // Wait for fade-out animation
-        }, 2000); // Minimum 2 seconds splash
+        }, 3000); // Increased to 3 seconds for better visibility
 
         return () => clearTimeout(timer);
-    }, [onFinish]);
+    }, []); // Run once on mount
 
     if (!show) return null;
 

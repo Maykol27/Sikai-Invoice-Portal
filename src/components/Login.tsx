@@ -43,7 +43,7 @@ export function Login() {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8">
             <div className="glass-panel p-8 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-sikai-dark to-sikai-accent left-0"></div>
 

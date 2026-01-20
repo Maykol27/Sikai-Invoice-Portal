@@ -13,10 +13,21 @@ import { SplashScreen } from './components/SplashScreen';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const [splashFinished, setSplashFinished] = useState(false);
 
-  // While initializing auth, show the SplashScreen
-  if (loading) return <SplashScreen />;
+  // Show splash until min timer finishes
+  // AND also wait for auth loading to finish so we don't flash login screen if user is actually logged in
+  if (!splashFinished || loading) {
+    return (
+      <SplashScreen
+        onFinish={() => setSplashFinished(true)}
+      // If auth loads fast, we still wait for splash
+      // If auth is slow, splash waits for auth (by not unmounting due to 'loading' check above, but we need to ensure SplashScreen calls onFinish)
+      />
+    );
+  }
 
+  // Once splash is visually done and auth is loaded:
   if (!user) return <Login />;
 
   return <>{children}</>;
