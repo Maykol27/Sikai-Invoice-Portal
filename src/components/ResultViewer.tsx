@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { useRef } from 'react';
+import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
+import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
 
 interface ResultViewerProps {
     data: any;
@@ -11,334 +12,330 @@ interface ResultViewerProps {
 
 
 export function ResultViewer({ data, onReset }: ResultViewerProps) {
-    const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
+    export function ResultViewer({ data, onReset }: ResultViewerProps) {
+        const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
+        const [showExportMenu, setShowExportMenu] = useState(false);
+        const exportMenuRef = useRef<HTMLDivElement>(null);
+        const fileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        const initialSelection: Record<string, boolean> = {};
-        Object.keys(data).forEach(key => {
-            if (key !== 'items' && key !== 'raw_data' && data[key]) {
-                initialSelection[key] = true;
+        useEffect(() => {
+            function handleClickOutside(event: MouseEvent) {
+                if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                    setShowExportMenu(false);
+                }
             }
-        });
-        initialSelection['items'] = true;
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => document.removeEventListener("mousedown", handleClickOutside);
+        }, []);
 
-        // Auto-select raw_data if it has meaningful content
-        if (data.raw_data && Object.keys(data.raw_data).length > 0) {
-            initialSelection['raw_data'] = true;
-        }
+        useEffect(() => {
+            const initialSelection: Record<string, boolean> = {};
+            Object.keys(data).forEach(key => {
+                if (key !== 'items' && key !== 'raw_data' && data[key]) {
+                    initialSelection[key] = true;
+                }
+            });
+            initialSelection['items'] = true;
 
-        setSelectedFields(initialSelection);
-    }, [data]);
+            // Auto-select raw_data if it has meaningful content
+            if (data.raw_data && Object.keys(data.raw_data).length > 0) {
+                initialSelection['raw_data'] = true;
+            }
 
-    const toggleField = (key: string) => {
-        setSelectedFields(prev => ({ ...prev, [key]: !prev[key] }));
+            setSelectedFields(initialSelection);
+        }, [data]);
+
+        const toggleField = (key: string) => {
+            setSelectedFields(prev => ({ ...prev, [key]: !prev[key] }));
+        };
+
+        const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
+            // Wrap single data in array for generic util
+            triggerStandardExport([data], type, `sikai_scan`);
+            setShowExportMenu(false);
+        };
+
+        const handleSmartExport = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            triggerSmartExport(file, [data], () => {
+                setShowExportMenu(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            });
+        };
+
     };
 
-    const handleExport = (type: 'csv' | 'json') => {
-        const exportData: any = {};
-        Object.keys(selectedFields).forEach(key => {
-            if (selectedFields[key]) {
-                exportData[key] = data[key];
-            }
-        });
-
-        const fileName = `sikai_export_${data.date || 'scan'}`;
-
-        if (type === 'json') {
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${fileName}.json`;
-            a.click();
-        } else if (type === 'csv') {
-            const flatData = { ...exportData };
-            delete flatData.items;
-            delete flatData.raw_data; // Flatten raw data differently if needed, or exclude
-
-            const ws = XLSX.utils.json_to_sheet([flatData]);
-
-            if (selectedFields['items'] && data.items && Array.isArray(data.items)) {
-                XLSX.utils.sheet_add_json(ws, data.items, { origin: "A5" });
-            }
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "SIKAI Export");
-            XLSX.writeFile(wb, `${fileName}.csv`);
-        }
+    const fieldIcons: Record<string, any> = {
+        date: Calendar,
+        due_date: Calendar,
+        nit: Building2,
+        provider_name: Building2,
+        total_amount: DollarSign,
+        iva_amount: DollarSign,
+        total_iva: DollarSign,
+        subtotal: DollarSign,
+        discount: Tag,
+        subtotal_after_discount: DollarSign,
+        city: MapPin,
+        address: MapPin,
+        phone: Phone,
+        client_name: User,
+        client_nit: User,
+        time: Clock,
+        invoice_number: FileText,
+        dian_resolution_text: FileCheck,
+        resolution_dian: FileCheck,
+        payment_method: CreditCard,
+        seller: Briefcase,
+        order_number: Hash,
+        remission_number: Receipt,
+        amount_text: FileText
     };
 
-};
+    const fieldLabels: Record<string, string> = {
+        date: 'Fecha Emisión',
+        due_date: 'Vencimiento',
+        nit: 'NIT Proveedor',
+        provider_name: 'Proveedor',
+        total_amount: 'Total Operación',
+        iva_amount: 'Total IVA',
+        total_iva: 'Total IVA',
+        subtotal: 'Subtotal',
+        discount: 'Descuento',
+        subtotal_after_discount: 'Base Grabable',
+        city: 'Ciudad',
+        address: 'Dirección',
+        phone: 'Teléfono',
+        client_name: 'Cliente',
+        client_nit: 'NIT Cliente',
+        time: 'Hora',
+        invoice_number: 'N° Factura',
+        resolution_dian: 'Resolución DIAN',
+        dian_resolution_text: 'Resolución DIAN',
+        payment_method: 'Método Pago',
+        seller: 'Vendedor/Zona',
+        order_number: 'Orden Compra',
+        remission_number: 'Remisión',
+        amount_text: 'Valor en Letras'
+    };
 
-const fieldIcons: Record<string, any> = {
-    date: Calendar,
-    due_date: Calendar,
-    nit: Building2,
-    provider_name: Building2,
-    total_amount: DollarSign,
-    iva_amount: DollarSign,
-    total_iva: DollarSign,
-    subtotal: DollarSign,
-    discount: Tag,
-    subtotal_after_discount: DollarSign,
-    city: MapPin,
-    address: MapPin,
-    phone: Phone,
-    client_name: User,
-    client_nit: User,
-    time: Clock,
-    invoice_number: FileText,
-    dian_resolution_text: FileCheck,
-    resolution_dian: FileCheck,
-    payment_method: CreditCard,
-    seller: Briefcase,
-    order_number: Hash,
-    remission_number: Receipt,
-    amount_text: FileText
-};
-
-const fieldLabels: Record<string, string> = {
-    date: 'Fecha Emisión',
-    due_date: 'Vencimiento',
-    nit: 'NIT Proveedor',
-    provider_name: 'Proveedor',
-    total_amount: 'Total Operación',
-    iva_amount: 'Total IVA',
-    total_iva: 'Total IVA',
-    subtotal: 'Subtotal',
-    discount: 'Descuento',
-    subtotal_after_discount: 'Base Grabable',
-    city: 'Ciudad',
-    address: 'Dirección',
-    phone: 'Teléfono',
-    client_name: 'Cliente',
-    client_nit: 'NIT Cliente',
-    time: 'Hora',
-    invoice_number: 'N° Factura',
-    resolution_dian: 'Resolución DIAN',
-    dian_resolution_text: 'Resolución DIAN',
-    payment_method: 'Método Pago',
-    seller: 'Vendedor/Zona',
-    order_number: 'Orden Compra',
-    remission_number: 'Remisión',
-    amount_text: 'Valor en Letras'
-};
-
-return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-        {/* Header Actions */}
-        <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
-            <button
-                onClick={onReset}
-                className="text-gray-400 hover:text-white flex items-center gap-2 transition-colors hover:bg-white/5 py-2 px-4 rounded-full"
-            >
-                <ArrowLeft className="w-4 h-4" />
-                Escanear otra
-            </button>
-            <div className="flex gap-3">
+    return (
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            {/* Header Actions */}
+            <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
                 <button
-                    onClick={() => handleExport('csv')}
-                    className="bg-sikai-accent hover:bg-sikai-secondary text-black font-bold px-6 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-sikai-accent/20"
+                    onClick={onReset}
+                    className="text-gray-400 hover:text-white flex items-center gap-2 transition-colors hover:bg-white/5 py-2 px-4 rounded-full"
                 >
-                    <Download className="w-4 h-4" />
-                    Exportar CSV
+                    <ArrowLeft className="w-4 h-4" />
+                    Escanear otra
                 </button>
-                <button
-                    onClick={() => handleExport('json')}
-                    className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-700"
-                >
-                    <Download className="w-4 h-4 text-sikai-accent" />
-                    JSON
-                </button>
-            </div>
-        </div>
-
-        <div className="glass-panel rounded-xl relative overflow-hidden shadow-2xl border border-sikai-accent/20">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sikai-dark to-sikai-accent"></div>
-
-            {/* Banner SIKAI */}
-            <div className="p-8 border-b border-gray-700/50 bg-black/40">
-                <div className="flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="w-16 h-16 rounded-2xl bg-sikai-accent/20 flex items-center justify-center text-sikai-accent shadow-[0_0_20px_rgba(38,216,196,0.2)]">
-                        <CheckCircle className="w-8 h-8" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                            <h2 className="text-3xl font-headline font-bold text-white">
-                                Procesado por <span className="text-sikai-accent">SIKAI Intelligence</span>
-                            </h2>
-                            <span className="bg-sikai-accent/10 text-sikai-accent text-xs font-bold px-2 py-1 rounded border border-sikai-accent/20">v3.0</span>
-                        </div>
-                        <p className="text-gray-400 text-sm flex items-center gap-2 bg-black/30 w-fit px-3 py-1 rounded-full border border-white/5">
-                            <Building2 size={14} className="text-sikai-accent" />
-                            {data.provider_name || 'Proveedor desconocido'}
-                            <span className="text-gray-600">|</span>
-                            <span className="text-gray-300">{data.invoice_number || 'S/N'}</span>
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-sm text-gray-500 mb-1">Total Operación</p>
-                        <div className="text-4xl font-mono font-bold text-white tracking-tight">
-                            {data.total_amount ? formatCurrency(data.total_amount) : '$0'}
-                        </div>
-                    </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => handleExport('csv')}
+                        className="bg-sikai-accent hover:bg-sikai-secondary text-black font-bold px-6 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-sikai-accent/20"
+                    >
+                        <Download className="w-4 h-4" />
+                        Exportar CSV
+                    </button>
+                    <button
+                        onClick={() => handleExport('json')}
+                        className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-700"
+                    >
+                        <Download className="w-4 h-4 text-sikai-accent" />
+                        JSON
+                    </button>
                 </div>
             </div>
 
-            <div className="p-8">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <FileText className="text-sikai-accent" size={20} />
-                        Datos Extraídos
-                    </h3>
-                    <span className="text-xs text-sikai-accent bg-sikai-accent/10 px-3 py-1 rounded-full border border-sikai-accent/20">
-                        {Object.values(selectedFields).filter(Boolean).length} campos seleccionados
-                    </span>
+            <div className="glass-panel rounded-xl relative overflow-hidden shadow-2xl border border-sikai-accent/20">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sikai-dark to-sikai-accent"></div>
+
+                {/* Banner SIKAI */}
+                <div className="p-8 border-b border-gray-700/50 bg-black/40">
+                    <div className="flex flex-col md:flex-row md:items-center gap-6">
+                        <div className="w-16 h-16 rounded-2xl bg-sikai-accent/20 flex items-center justify-center text-sikai-accent shadow-[0_0_20px_rgba(38,216,196,0.2)]">
+                            <CheckCircle className="w-8 h-8" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                                <h2 className="text-3xl font-headline font-bold text-white">
+                                    Procesado por <span className="text-sikai-accent">SIKAI Intelligence</span>
+                                </h2>
+                                <span className="bg-sikai-accent/10 text-sikai-accent text-xs font-bold px-2 py-1 rounded border border-sikai-accent/20">v3.0</span>
+                            </div>
+                            <p className="text-gray-400 text-sm flex items-center gap-2 bg-black/30 w-fit px-3 py-1 rounded-full border border-white/5">
+                                <Building2 size={14} className="text-sikai-accent" />
+                                {data.provider_name || 'Proveedor desconocido'}
+                                <span className="text-gray-600">|</span>
+                                <span className="text-gray-300">{data.invoice_number || 'S/N'}</span>
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-gray-500 mb-1">Total Operación</p>
+                            <div className="text-4xl font-mono font-bold text-white tracking-tight">
+                                {data.total_amount ? formatCurrency(data.total_amount) : '$0'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Dynamic Field Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-                    {Object.entries(data).map(([key, value]) => {
-                        if (key === 'items' || key === 'raw_data' || !value) return null;
-                        const Icon = fieldIcons[key] || FileText;
-                        const label = fieldLabels[key] || key.replace(/_/g, ' ');
-                        const isSelected = selectedFields[key];
-                        const isMoney = (key.includes('amount') || key.includes('total') || key.includes('subtotal') || key.includes('discount')) && typeof value === 'number';
+                <div className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <FileText className="text-sikai-accent" size={20} />
+                            Datos Extraídos
+                        </h3>
+                        <span className="text-xs text-sikai-accent bg-sikai-accent/10 px-3 py-1 rounded-full border border-sikai-accent/20">
+                            {Object.values(selectedFields).filter(Boolean).length} campos seleccionados
+                        </span>
+                    </div>
 
-                        return (
-                            <div
-                                key={key}
-                                onClick={() => toggleField(key)}
-                                className={cn(
-                                    "p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none group relative overflow-hidden",
-                                    isSelected
-                                        ? "bg-sikai-accent/5 border-sikai-accent/40 shadow-[0_0_15px_rgba(38,216,196,0.05)]"
-                                        : "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
-                                )}
-                            >
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-2 text-gray-400 group-hover:text-sikai-accent transition-colors">
-                                        <Icon size={16} />
-                                        <span className="text-xs uppercase tracking-wider font-bold opacity-80">{label}</span>
+                    {/* Dynamic Field Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
+                        {Object.entries(data).map(([key, value]) => {
+                            if (key === 'items' || key === 'raw_data' || !value) return null;
+                            const Icon = fieldIcons[key] || FileText;
+                            const label = fieldLabels[key] || key.replace(/_/g, ' ');
+                            const isSelected = selectedFields[key];
+                            const isMoney = (key.includes('amount') || key.includes('total') || key.includes('subtotal') || key.includes('discount')) && typeof value === 'number';
+
+                            return (
+                                <div
+                                    key={key}
+                                    onClick={() => toggleField(key)}
+                                    className={cn(
+                                        "p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none group relative overflow-hidden",
+                                        isSelected
+                                            ? "bg-sikai-accent/5 border-sikai-accent/40 shadow-[0_0_15px_rgba(38,216,196,0.05)]"
+                                            : "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-2 text-gray-400 group-hover:text-sikai-accent transition-colors">
+                                            <Icon size={16} />
+                                            <span className="text-xs uppercase tracking-wider font-bold opacity-80">{label}</span>
+                                        </div>
+                                        <div className={cn(
+                                            "w-4 h-4 rounded-full border flex items-center justify-center transition-all",
+                                            isSelected ? "bg-sikai-accent border-sikai-accent scale-110" : "border-gray-600 bg-transparent"
+                                        )}>
+                                            {isSelected && <CheckCircle size={10} className="text-black" />}
+                                        </div>
                                     </div>
                                     <div className={cn(
-                                        "w-4 h-4 rounded-full border flex items-center justify-center transition-all",
-                                        isSelected ? "bg-sikai-accent border-sikai-accent scale-110" : "border-gray-600 bg-transparent"
+                                        "text-sm font-medium text-white break-words leading-relaxed",
+                                        isMoney && "font-mono text-lg tracking-tight text-sikai-accent"
                                     )}>
-                                        {isSelected && <CheckCircle size={10} className="text-black" />}
+                                        {isMoney
+                                            ? formatCurrency(value as number)
+                                            : String(value)}
                                     </div>
                                 </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Items Section Toggle */}
+                    {data.items && Array.isArray(data.items) && data.items.length > 0 && (
+                        <div className={cn(
+                            "rounded-xl border transition-all duration-300 overflow-hidden mb-6",
+                            selectedFields['items']
+                                ? "bg-gray-900/40 border-sikai-accent/30 shadow-lg"
+                                : "bg-gray-800/10 border-gray-700/30 opacity-80"
+                        )}>
+                            <div
+                                onClick={() => toggleField('items')}
+                                className="p-4 bg-gray-900/80 flex items-center justify-between cursor-pointer hover:bg-black/50 border-b border-white/5"
+                            >
+                                <h3 className="text-white font-semibold flex items-center gap-2">
+                                    <Package className={cn(selectedFields['items'] ? "text-sikai-accent" : "text-gray-500")} size={20} />
+                                    Detalle de Productos ({data.items.length})
+                                </h3>
                                 <div className={cn(
-                                    "text-sm font-medium text-white break-words leading-relaxed",
-                                    isMoney && "font-mono text-lg tracking-tight text-sikai-accent"
+                                    "px-3 py-1 rounded-full text-xs font-bold border transition-colors",
+                                    selectedFields['items'] ? "bg-sikai-accent text-black border-sikai-accent" : "text-gray-400 border-gray-600"
                                 )}>
-                                    {isMoney
-                                        ? formatCurrency(value as number)
-                                        : String(value)}
+                                    {selectedFields['items'] ? 'Incluido' : 'Excluido'}
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
 
-                {/* Items Section Toggle */}
-                {data.items && Array.isArray(data.items) && data.items.length > 0 && (
-                    <div className={cn(
-                        "rounded-xl border transition-all duration-300 overflow-hidden mb-6",
-                        selectedFields['items']
-                            ? "bg-gray-900/40 border-sikai-accent/30 shadow-lg"
-                            : "bg-gray-800/10 border-gray-700/30 opacity-80"
-                    )}>
-                        <div
-                            onClick={() => toggleField('items')}
-                            className="p-4 bg-gray-900/80 flex items-center justify-between cursor-pointer hover:bg-black/50 border-b border-white/5"
-                        >
-                            <h3 className="text-white font-semibold flex items-center gap-2">
-                                <Package className={cn(selectedFields['items'] ? "text-sikai-accent" : "text-gray-500")} size={20} />
-                                Detalle de Productos ({data.items.length})
-                            </h3>
-                            <div className={cn(
-                                "px-3 py-1 rounded-full text-xs font-bold border transition-colors",
-                                selectedFields['items'] ? "bg-sikai-accent text-black border-sikai-accent" : "text-gray-400 border-gray-600"
-                            )}>
-                                {selectedFields['items'] ? 'Incluido' : 'Excluido'}
-                            </div>
-                        </div>
-
-                        {/* Detailed Items Table */}
-                        {selectedFields['items'] && (
-                            <div className="p-0 overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-700">
-                                            <th className="py-4 pl-6 font-medium">Código</th>
-                                            <th className="py-4 px-4 font-medium min-w-[200px]">Descripción</th>
-                                            <th className="py-4 px-4 text-center">Cant.</th>
-                                            <th className="py-4 px-4 text-center">U.Med</th>
-                                            <th className="py-4 px-4 text-right">Precio Unit.</th>
-                                            <th className="py-4 px-4 text-center">IVA %</th>
-                                            <th className="py-4 px-4 text-right">IVA Val.</th>
-                                            <th className="py-4 pr-6 text-right">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-800">
-                                        {data.items.map((item: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group">
-                                                <td className="py-4 pl-6 text-sikai-primary font-mono text-xs">{item.code || '-'}</td>
-                                                <td className="py-4 px-4 text-gray-700 dark:text-gray-300 text-sm font-medium">{item.description}</td>
-                                                <td className="py-4 px-4 text-center text-gray-600 dark:text-gray-400 text-sm">{item.quantity}</td>
-                                                <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.unit_measure || 'Und'}</td>
-                                                <td className="py-4 px-4 text-right text-gray-700 dark:text-gray-300 text-sm font-mono">
-                                                    {item.unit_price ? formatCurrency(item.unit_price) : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.tax_rate || '0%'}</td>
-                                                <td className="py-4 px-4 text-right text-gray-500 text-xs font-mono">
-                                                    {item.tax_amount ? formatCurrency(item.tax_amount) : '-'}
-                                                </td>
-                                                <td className="py-4 pr-6 text-right text-gray-900 dark:text-white font-bold text-sm font-mono group-hover:text-sikai-primary transition-colors">
-                                                    {item.total ? formatCurrency(item.total) : '-'}
-                                                </td>
+                            {/* Detailed Items Table */}
+                            {selectedFields['items'] && (
+                                <div className="p-0 overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-700">
+                                                <th className="py-4 pl-6 font-medium">Código</th>
+                                                <th className="py-4 px-4 font-medium min-w-[200px]">Descripción</th>
+                                                <th className="py-4 px-4 text-center">Cant.</th>
+                                                <th className="py-4 px-4 text-center">U.Med</th>
+                                                <th className="py-4 px-4 text-right">Precio Unit.</th>
+                                                <th className="py-4 px-4 text-center">IVA %</th>
+                                                <th className="py-4 px-4 text-right">IVA Val.</th>
+                                                <th className="py-4 pr-6 text-right">Total</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Raw Data Fallout (Optional) */}
-                {data.raw_data && Object.keys(data.raw_data).length > 0 && (
-                    <div className={cn(
-                        "rounded-xl border transition-all duration-200 overflow-hidden",
-                        selectedFields['raw_data']
-                            ? "bg-gray-800/20 border-yellow-500/30"
-                            : "bg-gray-800/10 border-gray-700/30 opacity-70"
-                    )}>
-                        <div
-                            onClick={() => toggleField('raw_data')}
-                            className="p-4 bg-gray-900/50 flex items-center justify-between cursor-pointer hover:bg-gray-900/70"
-                        >
-                            <h3 className="text-white font-semibold flex items-center gap-2">
-                                <Hash className={cn(selectedFields['raw_data'] ? "text-yellow-500" : "text-gray-500")} size={20} />
-                                Datos Adicionales ({Object.keys(data.raw_data).length})
-                            </h3>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-800">
+                                            {data.items.map((item: any, idx: number) => (
+                                                <tr key={idx} className="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group">
+                                                    <td className="py-4 pl-6 text-sikai-primary font-mono text-xs">{item.code || '-'}</td>
+                                                    <td className="py-4 px-4 text-gray-700 dark:text-gray-300 text-sm font-medium">{item.description}</td>
+                                                    <td className="py-4 px-4 text-center text-gray-600 dark:text-gray-400 text-sm">{item.quantity}</td>
+                                                    <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.unit_measure || 'Und'}</td>
+                                                    <td className="py-4 px-4 text-right text-gray-700 dark:text-gray-300 text-sm font-mono">
+                                                        {item.unit_price ? formatCurrency(item.unit_price) : '-'}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.tax_rate || '0%'}</td>
+                                                    <td className="py-4 px-4 text-right text-gray-500 text-xs font-mono">
+                                                        {item.tax_amount ? formatCurrency(item.tax_amount) : '-'}
+                                                    </td>
+                                                    <td className="py-4 pr-6 text-right text-gray-900 dark:text-white font-bold text-sm font-mono group-hover:text-sikai-primary transition-colors">
+                                                        {item.total ? formatCurrency(item.total) : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
-                        {selectedFields['raw_data'] && (
-                            <div className="p-4 grid grid-cols-2 gap-4">
-                                {Object.entries(data.raw_data).map(([k, v]) => (
-                                    <div key={k} className="p-3 bg-black/20 rounded border border-white/5">
-                                        <div className="text-xs text-gray-500 uppercase mb-1">{k}</div>
-                                        <div className="text-sm text-gray-300">{String(v)}</div>
-                                    </div>
-                                ))}
+                    )}
+
+                    {/* Raw Data Fallout (Optional) */}
+                    {data.raw_data && Object.keys(data.raw_data).length > 0 && (
+                        <div className={cn(
+                            "rounded-xl border transition-all duration-200 overflow-hidden",
+                            selectedFields['raw_data']
+                                ? "bg-gray-800/20 border-yellow-500/30"
+                                : "bg-gray-800/10 border-gray-700/30 opacity-70"
+                        )}>
+                            <div
+                                onClick={() => toggleField('raw_data')}
+                                className="p-4 bg-gray-900/50 flex items-center justify-between cursor-pointer hover:bg-gray-900/70"
+                            >
+                                <h3 className="text-white font-semibold flex items-center gap-2">
+                                    <Hash className={cn(selectedFields['raw_data'] ? "text-yellow-500" : "text-gray-500")} size={20} />
+                                    Datos Adicionales ({Object.keys(data.raw_data).length})
+                                </h3>
                             </div>
-                        )}
-                    </div>
-                )}
+                            {selectedFields['raw_data'] && (
+                                <div className="p-4 grid grid-cols-2 gap-4">
+                                    {Object.entries(data.raw_data).map(([k, v]) => (
+                                        <div key={k} className="p-3 bg-black/20 rounded border border-white/5">
+                                            <div className="text-xs text-gray-500 uppercase mb-1">{k}</div>
+                                            <div className="text-sm text-gray-300">{String(v)}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
 }
 

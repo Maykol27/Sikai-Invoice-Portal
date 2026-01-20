@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { InvoiceDetails } from './InvoiceDetails';
 import { FileText, Calendar, Receipt, Search, ArrowRight, Download, ChevronDown } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
 
 export function History() {
     const { user } = useAuth();
