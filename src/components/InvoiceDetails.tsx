@@ -78,27 +78,28 @@ export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDeta
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-[#0f1218] w-full max-w-7xl max-h-[90vh] rounded-2xl border border-sikai-accent/20 shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in slide-in-from-bottom-10 duration-500">
+            {/* Modal Container: Used dvh for mobile address bar safety */}
+            <div className="bg-[#0f1218] w-full max-w-7xl max-h-[85dvh] md:max-h-[90vh] rounded-2xl border border-sikai-accent/20 shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in slide-in-from-bottom-10 duration-500">
 
                 {/* Left Column: Image Preview (if available) - Hidden on mobile if needed */}
                 {imageSrc && (
-                    <div className="hidden md:flex w-5/12 bg-black/50 p-6 flex-col justify-center items-center border-r border-gray-800 relative group">
+                    <div className="hidden md:flex w-5/12 bg-black/50 p-6 flex-col justify-center items-center border-r border-gray-800 relative group h-full">
                         <h3 className="absolute top-4 left-4 text-xs font-mono uppercase tracking-widest bg-black/60 px-2 py-1 rounded text-sikai-accent/80 border border-sikai-accent/20">
                             Documento Original
                         </h3>
                         <img
-                            src={imageSrc}
+                            src={imageSrc || undefined}
                             alt="Factura Escaneada"
                             className="max-h-full max-w-full object-contain rounded-lg shadow-lg transition-transform duration-300 group-hover:scale-105"
                         />
                     </div>
                 )}
 
-                {/* Right Column: Data Details */}
-                <div className={`w-full ${imageSrc ? 'md:w-7/12' : 'w-full'} flex flex-col`}>
+                {/* Right Column: Data Details - Added h-full and min-h-0 for scroll fix */}
+                <div className={`w-full ${imageSrc ? 'md:w-7/12' : 'w-full'} flex flex-col h-full min-h-0`}>
 
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-800 flex justify-between items-start bg-gray-900/50">
+                    <div className="p-6 border-b border-gray-800 flex justify-between items-start bg-gray-900/50 shrink-0">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <h2 className="text-2xl font-bold text-white tracking-tight">
@@ -135,7 +136,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDeta
                         </button>
                     </div>
 
-                    {/* Scrollable Content */}
+                    {/* Scrollable Content - Added pb-safe or ample padding */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar bg-[#0f1218]">
 
                         {/* Totals Summary Cards */}
