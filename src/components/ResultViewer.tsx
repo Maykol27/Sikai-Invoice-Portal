@@ -285,19 +285,19 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
                                         </thead>
                                         <tbody className="divide-y divide-gray-800">
                                             {data.items.map((item: any, idx: number) => (
-                                                <tr key={idx} className="hover:bg-white/5 transition-colors group">
-                                                    <td className="py-4 pl-6 text-sikai-accent font-mono text-xs">{item.code || '-'}</td>
-                                                    <td className="py-4 px-4 text-gray-300 text-sm font-medium">{item.description}</td>
-                                                    <td className="py-4 px-4 text-center text-gray-400 text-sm">{item.quantity}</td>
+                                                <tr key={idx} className="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group">
+                                                    <td className="py-4 pl-6 text-sikai-primary font-mono text-xs">{item.code || '-'}</td>
+                                                    <td className="py-4 px-4 text-gray-700 dark:text-gray-300 text-sm font-medium">{item.description}</td>
+                                                    <td className="py-4 px-4 text-center text-gray-600 dark:text-gray-400 text-sm">{item.quantity}</td>
                                                     <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.unit_measure || 'Und'}</td>
-                                                    <td className="py-4 px-4 text-right text-gray-300 text-sm font-mono">
+                                                    <td className="py-4 px-4 text-right text-gray-700 dark:text-gray-300 text-sm font-mono">
                                                         {item.unit_price ? formatCurrency(item.unit_price) : '-'}
                                                     </td>
-                                                    <td className="py-4 px-4 text-center text-gray-400 text-xs">{item.tax_rate || '0%'}</td>
+                                                    <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.tax_rate || '0%'}</td>
                                                     <td className="py-4 px-4 text-right text-gray-500 text-xs font-mono">
                                                         {item.tax_amount ? formatCurrency(item.tax_amount) : '-'}
                                                     </td>
-                                                    <td className="py-4 pr-6 text-right text-white font-bold text-sm font-mono group-hover:text-sikai-accent transition-colors">
+                                                    <td className="py-4 pr-6 text-right text-gray-900 dark:text-white font-bold text-sm font-mono group-hover:text-sikai-primary transition-colors">
                                                         {item.total ? formatCurrency(item.total) : '-'}
                                                     </td>
                                                 </tr>
