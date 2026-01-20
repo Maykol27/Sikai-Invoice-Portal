@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Zap, ShieldCheck } from 'lucide-react';
+import { Upload, Zap, ShieldCheck, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
@@ -11,6 +11,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
     const [isScanning, setIsScanning] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
     // Bulk Upload State
@@ -194,14 +195,36 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
             </div>
 
             {/* Trust Indicators - Simplified */}
-            <div className="mt-8 flex justify-center gap-6 text-gray-400 dark:text-gray-500 text-xs font-medium tracking-wider uppercase opacity-80 dark:opacity-60">
-                <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-sikai-secondary" />
-                    <span>Encriptado</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Zap size={14} className="text-sikai-secondary" />
-                    <span>Rápido</span>
+            <div className="mt-8 flex flex-col items-center gap-6">
+
+                {/* Camera Action Button */}
+                <input
+                    type="file"
+                    ref={cameraInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => e.target.files && handleBatchUpload(e.target.files)}
+                />
+
+                <button
+                    onClick={() => !isScanning && cameraInputRef.current?.click()}
+                    disabled={isScanning}
+                    className="flex items-center gap-2 px-6 py-3 bg-white/10 dark:bg-black/20 hover:bg-sikai-accent/10 border border-sikai-border hover:border-sikai-accent rounded-full transition-all group"
+                >
+                    <Camera className="w-5 h-5 text-sikai-accent group-hover:scale-110 transition-transform" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-sikai-accent">Tomar Foto</span>
+                </button>
+
+                <div className="flex justify-center gap-6 text-gray-400 dark:text-gray-500 text-xs font-medium tracking-wider uppercase opacity-80 dark:opacity-60">
+                    <div className="flex items-center gap-2">
+                        <ShieldCheck size={14} className="text-sikai-secondary" />
+                        <span>Encriptado</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Zap size={14} className="text-sikai-secondary" />
+                        <span>Rápido</span>
+                    </div>
                 </div>
             </div>
 

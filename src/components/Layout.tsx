@@ -12,7 +12,8 @@ import {
     ChevronRight,
     Sun,
     Moon,
-    Coins
+    Coins,
+    Globe
 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 
@@ -194,6 +195,31 @@ function Sidebar() {
                     );
                 })}
 
+                {/* External Services Link */}
+                <a
+                    href="https://sikaiconsulting.com/es"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={twMerge(
+                        "flex items-center py-3 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                        collapsed ? "justify-center px-2 gap-0" : "px-3 gap-4",
+                        "text-gray-700 dark:text-gray-400 hover:bg-sikai-accent/5 hover:text-sikai-accent"
+                    )}
+                    title={collapsed ? "Más Servicios" : undefined}
+                >
+                    <Globe className={twMerge(
+                        "shrink-0 transition-transform group-hover:rotate-12",
+                        "w-6 h-6"
+                    )} />
+                    <span className={twMerge(
+                        "font-medium text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap",
+                        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                    )}>
+                        Más Servicios
+                    </span>
+                    {!collapsed && <span className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-sikai-accent">↗</span>}
+                </a>
+
 
                 {/* Credits Display */}
                 <div className="mt-auto mb-2">
@@ -367,6 +393,16 @@ function MobileNav() {
                 })}
 
                 <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 ml-2">
+                    <a
+                        href="https://sikaiconsulting.com/es"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-gray-500 hover:text-sikai-accent transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
+                        title="Web Oficial"
+                    >
+                        <Globe className="w-6 h-6" />
+                    </a>
+
                     <button
                         onClick={toggleTheme}
                         className="p-2 text-gray-500 hover:text-sikai-primary transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
