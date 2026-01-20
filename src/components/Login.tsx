@@ -31,7 +31,11 @@ export function Login() {
             if (result.error) throw result.error;
 
             if (isSignUp) {
-                setMessage('Cuenta creada. ¡Ahora puedes iniciar sesión!');
+                if (result.data.user && !result.data.session) {
+                    setMessage('Cuenta creada. ¡Por favor verifica tu correo para confirmar tu cuenta antes de iniciar sesión!');
+                } else {
+                    setMessage('Cuenta creada. ¡Ahora puedes iniciar sesión!');
+                }
                 setIsSignUp(false);
             }
 
