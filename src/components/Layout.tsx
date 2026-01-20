@@ -21,6 +21,19 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+    const { user } = useAuth();
+
+    // If no user is logged in, render only content (Login page), full width
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-sikai-bg text-sikai-text font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300">
+                <main className="w-full h-full">
+                    {children}
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="flex h-screen bg-sikai-bg text-sikai-text overflow-hidden font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300">
             <Sidebar />
@@ -42,18 +55,27 @@ function Sidebar() {
     const [isDark, setIsDark] = useState(true);
 
     useEffect(() => {
-        // Init theme
+        // Robust Theme Initialization
         const savedTheme = localStorage.getItem('theme');
         const root = document.documentElement;
 
-        if (savedTheme === 'light') {
-            setIsDark(false);
-            root.classList.remove('dark');
-            root.setAttribute('data-theme', 'light');
+        const applyTheme = (dark: boolean) => {
+            setIsDark(dark);
+            if (dark) {
+                root.classList.add('dark');
+                root.setAttribute('data-theme', 'dark');
+            } else {
+                root.classList.remove('dark');
+                root.setAttribute('data-theme', 'light');
+            }
+        };
+
+        if (savedTheme) {
+            applyTheme(savedTheme === 'dark');
         } else {
-            setIsDark(true);
-            root.classList.add('dark');
-            root.setAttribute('data-theme', 'dark');
+            // Check system preference
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(systemPrefersDark);
         }
     }, []);
 

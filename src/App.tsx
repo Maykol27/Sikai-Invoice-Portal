@@ -9,21 +9,16 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { useState } from 'react';
 import { Dashboard } from './components/Dashboard';
 
-import { Loader2 } from 'lucide-react';
+import { SplashScreen } from './components/SplashScreen';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
-  if (loading) return (
-    <div className="flex h-screen w-full items-center justify-center bg-sikai-bg">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="w-12 h-12 text-sikai-accent animate-spin" />
-        <p className="text-gray-400 font-headline animate-pulse">Iniciando SIKAI CX...</p>
-      </div>
-    </div>
-  );
+  // While initializing auth, show the SplashScreen
+  if (loading) return <SplashScreen />;
 
   if (!user) return <Login />;
+
   return <>{children}</>;
 }
 
