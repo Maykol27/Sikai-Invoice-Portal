@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Zap, ShieldCheck } from 'lucide-react';
+import { Upload, Zap, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
 import { cn } from '../lib/utils';
 
 interface InvoiceScannerProps {
@@ -9,7 +8,6 @@ interface InvoiceScannerProps {
 }
 
 export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
-    const { user } = useAuth();
     const [isScanning, setIsScanning] = useState(false);
     const [currentImage, setCurrentImage] = useState<string | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
@@ -84,13 +82,6 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
         e.preventDefault();
         setIsDragging(false);
     }, []);
-
-    const resetSelection = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCurrentImage(null);
-        setIsScanning(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    }
 
     return (
         <div className="h-full flex flex-col justify-center max-w-5xl mx-auto px-4 animate-in fade-in duration-700">

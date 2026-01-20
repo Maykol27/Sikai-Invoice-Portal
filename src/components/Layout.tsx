@@ -8,15 +8,12 @@ import {
     ScanLine,
     LogOut,
     User,
-    Menu,
     ChevronLeft,
     ChevronRight,
-    X,
     Sun,
     Moon,
     Coins
 } from 'lucide-react';
-import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 interface LayoutProps {

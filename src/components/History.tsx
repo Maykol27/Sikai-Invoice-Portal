@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { InvoiceDetails } from './InvoiceDetails';
-import { FileText, Calendar, Receipt, Search, ArrowRight, X } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { FileText, Calendar, Receipt, Search, ArrowRight } from 'lucide-react';
 
 export function History() {
     const { user } = useAuth();
