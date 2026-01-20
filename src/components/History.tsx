@@ -12,7 +12,7 @@ export function History() {
     const [selectedScan, setSelectedScan] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [showExportMenu, setShowExportMenu] = useState(false);
-    const [showExportMenu, setShowExportMenu] = useState(false);
+
     const exportMenuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,42 +59,7 @@ export function History() {
 
     const handleExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
         if (filteredScans.length === 0) return;
-
-        const dataToExport = filteredScans.map(scan => ({
-            Fecha: new Date(scan.created_at).toLocaleDateString(),
-            Hora: new Date(scan.created_at).toLocaleTimeString(),
-            Proveedor: scan.result?.provider_name || 'Desconocido',
-            NIT: scan.result?.nit || '',
-            Total: scan.result?.total_amount || 0,
-            IVA: scan.result?.total_iva || 0,
-            Factura_N: scan.result?.invoice_number || '',
-            Items: scan.result?.items?.length || 0,
-            ID_Interno: scan.id
-        }));
-
-        const fileName = `sikai_historial_${new Date().toISOString().split('T')[0]}`;
-
-        if (type === 'json') {
-            const blob = new Blob([JSON.stringify(filteredScans, null, 2)], { type: 'application/json' });
-            downloadBlob(blob, `${fileName}.json`);
-        } else if (type === 'txt') {
-            const textContent = filteredScans.map(scan =>
-                `[${new Date(scan.created_at).toLocaleString()}] ${scan.result?.provider_name} - Total: $${scan.result?.total_amount} (Ref: ${scan.result?.invoice_number})`
-            ).join('\n');
-            const blob = new Blob([textContent], { type: 'text/plain' });
-            downloadBlob(blob, `${fileName}.txt`);
-        } else {
-            // Excel / CSV using XLSX
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Historial");
-
-            if (type === 'csv') {
-                XLSX.writeFile(wb, `${fileName}.csv`);
-            } else {
-                XLSX.writeFile(wb, `${fileName}.xlsx`);
-            }
-        }
+        triggerStandardExport(filteredScans, type, `sikai_historial`);
         setShowExportMenu(false);
     };
 
@@ -102,109 +67,10 @@ export function History() {
         const file = e.target.files?.[0];
         if (!file || filteredScans.length === 0) return;
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bstr = evt.target?.result;
-            const wbTemplate = XLSX.read(bstr, { type: 'binary' });
-            const wsName = wbTemplate.SheetNames[0];
-            const wsTemplate = wbTemplate.Sheets[wsName];
-
-            // 1. Get Template Headers (Row 1)
-            const headers: string[] = [];
-            const range = XLSX.utils.decode_range(wsTemplate['!ref'] || 'A1:A1');
-            for (let C = range.s.c; C <= range.e.c; ++C) {
-                const cell = wsTemplate[XLSX.utils.encode_cell({ r: 0, c: C })];
-                headers.push(cell ? cell.v : '');
-            }
-
-            console.log("Template Headers:", headers);
-
-            // 2. Map Data Use Heuristics
-            const mappedData: any[] = [];
-
-            // Helper to get nested value safely
-            const getValue = (item: any, scan: any, header: string): any => {
-                const h = header.toLowerCase();
-                const result = scan.result;
-
-                // Priority 1: Direct Item Match (if mapping to items)
-                if (h.includes('descrip') || h.includes('nombre') || h.includes('producto')) return item.description;
-                if (h.includes('cantidad') || h.includes('cant')) return item.quantity;
-                if ((h.includes('precio') || h.includes('unitario')) && !h.includes('total')) return item.unit_price;
-                if (h.includes('medida') || h.includes('unidad')) return item.unit_measure;
-                if (h.includes('impuesto') || h.includes('iva')) return item.tax_amount || 0;
-
-                // Priority 2: Calculated Item Match
-                if (h.includes('subtotal')) return (item.unit_price || 0) * (item.quantity || 0); // Recalculate if needed
-                if (h.includes('total')) return item.total; // Item total
-
-                // Priority 3: Invoice Level (Fallback or Explicit)
-                if (h.includes('proveedor')) return result.provider_name;
-                if (h.includes('nit')) return result.nit;
-                if (h.includes('fecha')) return new Date(scan.created_at).toLocaleDateString();
-                if (h.includes('factura') || h.includes('doc')) return result.invoice_number;
-
-                // Priority 4: Constants / Defaults (from User Request screenshot)
-                if (h.includes('estampilla')) return 0;
-                if (h.includes('impoconsumo')) return 0;
-
-                return ''; // Strict: don't invent unknown fields
-            };
-
-            filteredScans.forEach(scan => {
-                // If template seems to be item-based (has quantity/description), we iterate items
-                // Otherwise we iterate scans.
-                const isItemTemplate = headers.some(h => h.toLowerCase().includes('cantidad') || h.toLowerCase().includes('descrip'));
-
-                if (isItemTemplate) {
-                    const items = scan.result?.items || [];
-                    if (items.length > 0) {
-                        items.forEach((item: any) => {
-                            const row: any = {};
-                            headers.forEach(header => {
-                                row[header] = getValue(item, scan, header);
-                            });
-                            mappedData.push(row);
-                        });
-                    } else {
-                        // Scan has no items, but template asks for them.
-                        // We could skip or add a row with empty item fields.
-                        // For now, let's add a row with invoice-level data only.
-                        const row: any = {};
-                        headers.forEach(header => {
-                            row[header] = getValue({}, scan, header); // Empty item
-                        });
-                        mappedData.push(row);
-                    }
-                } else {
-                    // Invoice Level Export
-                    const row: any = {};
-                    headers.forEach(header => {
-                        row[header] = getValue({}, scan, header);
-                    });
-                    mappedData.push(row);
-                }
-            });
-
-            // 3. Generate New Excel
-            const wsNew = XLSX.utils.json_to_sheet(mappedData, { header: headers }); // Use template headers as strict order
-            const wbNew = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wbNew, wsNew, "Exportación SIKAI");
-            XLSX.writeFile(wbNew, `sikai_smart_export_${new Date().getTime()}.xlsx`);
-
+        triggerSmartExport(file, filteredScans, () => {
             setShowExportMenu(false);
-            if (fileInputRef.current) fileInputRef.current.value = ''; // Reset
-        };
-        reader.readAsBinaryString(file);
-    };
-
-    const downloadBlob = (blob: Blob, name: string) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        a.click();
-        URL.revokeObjectURL(url);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        });
     };
 
     if (loading) return (

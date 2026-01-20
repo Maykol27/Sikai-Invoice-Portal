@@ -12,59 +12,56 @@ interface ResultViewerProps {
 
 
 export function ResultViewer({ data, onReset }: ResultViewerProps) {
-    export function ResultViewer({ data, onReset }: ResultViewerProps) {
-        const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
-        const [showExportMenu, setShowExportMenu] = useState(false);
-        const exportMenuRef = useRef<HTMLDivElement>(null);
-        const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-        useEffect(() => {
-            function handleClickOutside(event: MouseEvent) {
-                if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
-                    setShowExportMenu(false);
-                }
-            }
-            document.addEventListener("mousedown", handleClickOutside);
-            return () => document.removeEventListener("mousedown", handleClickOutside);
-        }, []);
-
-        useEffect(() => {
-            const initialSelection: Record<string, boolean> = {};
-            Object.keys(data).forEach(key => {
-                if (key !== 'items' && key !== 'raw_data' && data[key]) {
-                    initialSelection[key] = true;
-                }
-            });
-            initialSelection['items'] = true;
-
-            // Auto-select raw_data if it has meaningful content
-            if (data.raw_data && Object.keys(data.raw_data).length > 0) {
-                initialSelection['raw_data'] = true;
-            }
-
-            setSelectedFields(initialSelection);
-        }, [data]);
-
-        const toggleField = (key: string) => {
-            setSelectedFields(prev => ({ ...prev, [key]: !prev[key] }));
-        };
-
-        const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
-            // Wrap single data in array for generic util
-            triggerStandardExport([data], type, `sikai_scan`);
-            setShowExportMenu(false);
-        };
-
-        const handleSmartExport = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-
-            triggerSmartExport(file, [data], () => {
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
                 setShowExportMenu(false);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-            });
-        };
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
+    useEffect(() => {
+        const initialSelection: Record<string, boolean> = {};
+        Object.keys(data).forEach(key => {
+            if (key !== 'items' && key !== 'raw_data' && data[key]) {
+                initialSelection[key] = true;
+            }
+        });
+        initialSelection['items'] = true;
+
+        // Auto-select raw_data if it has meaningful content
+        if (data.raw_data && Object.keys(data.raw_data).length > 0) {
+            initialSelection['raw_data'] = true;
+        }
+
+        setSelectedFields(initialSelection);
+    }, [data]);
+
+    const toggleField = (key: string) => {
+        setSelectedFields(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
+        // Wrap single data in array for generic util
+        triggerStandardExport([data], type, `sikai_scan`);
+        setShowExportMenu(false);
+    };
+
+    const handleSmartExport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        triggerSmartExport(file, [data], () => {
+            setShowExportMenu(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        });
     };
 
     const fieldIcons: Record<string, any> = {
@@ -132,21 +129,62 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
                     <ArrowLeft className="w-4 h-4" />
                     Escanear otra
                 </button>
-                <div className="flex gap-3">
+                <div className="relative" ref={exportMenuRef}>
                     <button
-                        onClick={() => handleExport('csv')}
+                        onClick={() => setShowExportMenu(!showExportMenu)}
                         className="bg-sikai-accent hover:bg-sikai-secondary text-black font-bold px-6 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-sikai-accent/20"
                     >
                         <Download className="w-4 h-4" />
-                        Exportar CSV
+                        Exportar
+                        <ChevronDown className="w-4 h-4" />
                     </button>
-                    <button
-                        onClick={() => handleExport('json')}
-                        className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-700"
-                    >
-                        <Download className="w-4 h-4 text-sikai-accent" />
-                        JSON
-                    </button>
+
+                    {showExportMenu && (
+                        <div className="absolute right-0 mt-2 w-56 bg-[#1a1d24] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                            <div className="p-1">
+                                <button
+                                    onClick={() => handleStandardExport('xlsx')}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2"
+                                >
+                                    <FileText className="w-4 h-4 text-green-500" />
+                                    Excel (.xlsx)
+                                </button>
+                                <button
+                                    onClick={() => handleStandardExport('csv')}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2"
+                                >
+                                    <FileText className="w-4 h-4 text-blue-500" />
+                                    CSV (.csv)
+                                </button>
+                                <button
+                                    onClick={() => handleStandardExport('json')}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2"
+                                >
+                                    <FileText className="w-4 h-4 text-yellow-500" />
+                                    JSON (.json)
+                                </button>
+                            </div>
+                            <div className="h-px bg-gray-700 mx-2 my-1"></div>
+                            <div className="p-1">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2 group"
+                                >
+                                    <div className="p-1 bg-sikai-accent/10 rounded text-sikai-accent group-hover:bg-sikai-accent group-hover:text-black transition-colors">
+                                        <Package className="w-4 h-4" />
+                                    </div>
+                                    Smart Con Plantilla...
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleSmartExport}
+                        accept=".xlsx"
+                        className="hidden"
+                    />
                 </div>
             </div>
 
