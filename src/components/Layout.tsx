@@ -12,8 +12,7 @@ import {
     ChevronRight,
     Sun,
     Moon,
-    Coins,
-    Globe
+    Coins
 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 
@@ -137,7 +136,7 @@ function Sidebar() {
                 "h-24 flex items-center border-b border-gray-200 dark:border-sikai-border transition-all duration-300",
                 collapsed ? "justify-center px-0" : "justify-start px-6"
             )}>
-                <Link to="/" className="flex items-center gap-3 group">
+                <a href="https://sikaiconsulting.com" className="flex items-center gap-3 group">
                     <img
                         src="/sikai-logo.png"
                         alt="Sikai"
@@ -153,7 +152,7 @@ function Sidebar() {
                         <span className="font-headline font-bold text-lg tracking-wide text-gray-900 dark:text-white group-hover:text-sikai-accent transition-colors">SIKAI</span>
                         <span className="text-[10px] text-gray-500 font-code tracking-wider uppercase">Consulting</span>
                     </div>
-                </Link>
+                </a>
             </div>
 
             {/* Navigation */}
@@ -196,29 +195,7 @@ function Sidebar() {
                 })}
 
                 {/* External Services Link */}
-                <a
-                    href="https://sikaiconsulting.com/es"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={twMerge(
-                        "flex items-center py-3 rounded-xl transition-all duration-300 group relative overflow-hidden",
-                        collapsed ? "justify-center px-2 gap-0" : "px-3 gap-4",
-                        "text-gray-700 dark:text-gray-400 hover:bg-sikai-accent/5 hover:text-sikai-accent"
-                    )}
-                    title={collapsed ? "Más Servicios" : undefined}
-                >
-                    <Globe className={twMerge(
-                        "shrink-0 transition-transform group-hover:rotate-12",
-                        "w-6 h-6"
-                    )} />
-                    <span className={twMerge(
-                        "font-medium text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap",
-                        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                    )}>
-                        Más Servicios
-                    </span>
-                    {!collapsed && <span className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-sikai-accent">↗</span>}
-                </a>
+
 
 
                 {/* Credits Display */}
@@ -393,15 +370,7 @@ function MobileNav() {
                 })}
 
                 <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 ml-2">
-                    <a
-                        href="https://sikaiconsulting.com/es"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-gray-500 hover:text-sikai-accent transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
-                        title="Web Oficial"
-                    >
-                        <Globe className="w-6 h-6" />
-                    </a>
+
 
                     <button
                         onClick={toggleTheme}
