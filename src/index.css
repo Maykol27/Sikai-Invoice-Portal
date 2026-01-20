@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=PT+Sans:wght@400;700&family=Source+Code+Pro:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @plugin "tailwindcss-animate";
 
@@ -10,65 +10,133 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-sikai-dark: #16181d;
-  --color-sikai-card: var(--color-base-card);
-  --color-sikai-accent: var(--color-primary);
-  --color-sikai-secondary: var(--color-accent);
+  /* Brand Core - Preserved */
+  --color-sikai-primary: #1a88ff;
+  --color-sikai-cyan: #26d8c4;
+
+  /* Semantic Mappings */
+  --color-sikai-accent: var(--color-sikai-cyan);
   --color-sikai-bg: var(--color-base-bg);
   --color-sikai-text: var(--color-base-content);
+  --color-sikai-card: var(--color-base-card);
   --color-sikai-border: var(--color-base-border);
 
-  --font-headline: "Poppins", sans-serif;
-  --font-body: "PT Sans", sans-serif;
-  --font-code: "Source Code Pro", monospace;
+  /* New Deep Dark Palette */
+  --color-tech-black: #050508;
+  --color-tech-charcoal: #0f1115;
+  --color-tech-slate: #16181d;
 
-  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* Typography */
+  --font-headline: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-code: "JetBrains Mono", monospace;
+
+  /* Animations */
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
 }
 
 /* 
-  CSS Variables Strategy 
-  Light Mode is DEFAULT. Dark mode only applies if .dark class is present.
+  Global Reset & Base Variables
 */
 :root {
-  /* Default to Light Mode values */
-  --color-base-bg: #faf6fd;
-  --color-base-content: #16181d;
-  --color-base-card: #ffffff;
-  --color-base-border: #e4e4e7;
+  /* Light Mode (Clean, Professional, SaaS-like) */
+  --color-base-bg: #f3f4f6;
+  /* Lighter gray for better contrast */
+  --color-base-content: #0f172a;
+  --color-base-card: rgba(255, 255, 255, 0.9);
+  --color-base-border: #e2e8f0;
+  --color-base-glass: rgba(255, 255, 255, 0.7);
 
-  --color-primary: #1a88ff;
-  --color-accent: #26d8c4;
+  /* Primary Gradients */
+  --sikai-gradient: linear-gradient(135deg, #1a88ff 0%, #26d8c4 100%);
 }
 
-/* Apply Dark Mode values ONLY when .dark class is on standard parent */
 :root.dark {
-  --color-base-bg: #16181d;
-  --color-base-content: #ffffff;
-  --color-base-card: #1f1f21;
-  --color-base-border: #27272a;
+  /* Dark Mode (High-Tech, Immersive, Cyber) */
+  --color-base-bg: #050508;
+  /* Ultra deep black-blue */
+  --color-base-content: #f8fafc;
+  --color-base-card: rgba(22, 24, 29, 0.6);
+  --color-base-border: rgba(38, 216, 196, 0.15);
+  /* Subtle cyan tint */
+  --color-base-glass: rgba(10, 10, 12, 0.7);
 }
 
-/* Glassmorphism utilities */
+/* Global Styles */
+body {
+  @apply font-body antialiased;
+  background-image: radial-gradient(circle at 50% 0%, rgba(26, 136, 255, 0.05), transparent 40%);
+  background-attachment: fixed;
+}
+
+/* 
+   --- SIKAI DESIGN SYSTEM V2 UTILITIES --- 
+*/
+
+/* 1. The Glass Panel (Premium Frosted Glass) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-sikai-border);
+  background: var(--color-base-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-base-border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
 }
 
 .dark .glass-panel {
-  background: rgba(31, 31, 33, 0.7);
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.3);
+  /* Deeper shadow in dark mode */
 }
 
-.scan-line {
-  width: 100%;
-  height: 2px;
-  background: var(--color-sikai-secondary);
+/* 2. Tech Card (Interactive, Hover Effects) */
+.tech-card {
+  @apply glass-panel rounded-2xl p-6 relative overflow-hidden;
+}
+
+.tech-card::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
-  box-shadow: 0 0 10px var(--color-sikai-secondary);
-  animation: scan 2s linear infinite;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(38, 216, 196, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tech-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(38, 216, 196, 0.3);
+  box-shadow: 0 10px 40px -10px rgba(38, 216, 196, 0.15);
+}
+
+.tech-card:hover::before {
+  opacity: 1;
+}
+
+/* 3. Gradient Text */
+.text-gradient-sikai {
+  background: var(--sikai-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 4. Scanner Animation */
+.scan-line {
+  width: 100%;
+  height: 2px;
+  background: #26d8c4;
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 15px #26d8c4, 0 0 30px #1a88ff;
+  animation: scan 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   display: none;
+  z-index: 10;
 }
 
 @keyframes scan {
@@ -91,9 +159,43 @@
   }
 }
 
-.text-gradient-sikai {
-  background: linear-gradient(135deg, var(--color-sikai-accent) 0%, var(--color-sikai-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 5px rgba(38, 216, 196, 0.2);
+  }
+
+  to {
+    box-shadow: 0 0 20px rgba(38, 216, 196, 0.6);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(38, 216, 196, 0.6);
 }

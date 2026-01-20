@@ -49,8 +49,10 @@ export function Layout({ children }: LayoutProps) {
     // If no user is logged in, render only content (Login page), full width
     if (!user) {
         return (
-            <div className="min-h-screen bg-sikai-bg text-sikai-text font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300">
-                <main className="w-full h-full">
+            <div className="min-h-screen bg-sikai-bg text-sikai-text font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300 relative overflow-hidden">
+                {/* Tech Background Grid for Login */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(26,136,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(26,136,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none"></div>
+                <main className="w-full h-full relative z-10">
                     {children}
                 </main>
             </div>
@@ -58,11 +60,18 @@ export function Layout({ children }: LayoutProps) {
     }
 
     return (
-        <div className="flex h-screen bg-sikai-bg text-sikai-text overflow-hidden font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300">
+        <div className="flex h-screen bg-sikai-bg text-sikai-text overflow-hidden font-body selection:bg-sikai-accent selection:text-white transition-colors duration-300 relative">
+            {/* Tech Background Grid for Main App */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(26,136,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(26,136,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none z-0"></div>
+
+            {/* Glowing ambient orbs */}
+            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-sikai-primary/5 rounded-full blur-[100px] pointer-events-none z-0"></div>
+            <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-sikai-accent/5 rounded-full blur-[100px] pointer-events-none z-0"></div>
+
             <Sidebar />
             <MobileNav />
 
-            <main className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-sikai-border scrollbar-track-transparent">
+            <main className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-sikai-border scrollbar-track-transparent z-10">
                 <div className="container mx-auto px-4 py-6 md:px-8 md:py-10 pb-24 md:pb-10 max-w-7xl">
                     {children}
                 </div>
@@ -108,7 +117,8 @@ function Sidebar() {
     return (
         <aside
             className={twMerge(
-                "hidden md:flex flex-col bg-white dark:bg-black/20 backdrop-blur-md border-r border-gray-200 dark:border-sikai-border h-full transition-all duration-300 relative",
+                "hidden md:flex flex-col z-50 transition-all duration-300 relative h-full backdrop-blur-xl border-r shadow-2xl",
+                "bg-white/80 dark:bg-[#0f1115]/80 border-gray-200 dark:border-sikai-border/50", // Tech backgrounds
                 collapsed ? "w-[80px]" : "w-[280px]"
             )}
         >
