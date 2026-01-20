@@ -365,41 +365,21 @@ function MobileNav() {
                     );
                 })}
 
-                <div className="flex items-center gap-2">
-                    {/* Mobile Theme Toggle */}
-                    <button
-                        onClick={() => {
-                            const newTheme = !document.documentElement.classList.contains('dark');
-                            const root = document.documentElement;
-                            if (newTheme) {
-                                root.classList.add('dark');
-                                root.setAttribute('data-theme', 'dark');
-                                localStorage.setItem('theme', 'dark');
-                            } else {
-                                root.classList.remove('dark');
-                                root.setAttribute('data-theme', 'light');
-                                localStorage.setItem('theme', 'light');
-                            }
-                            // Force re-render of icons if needed, or rely on global event. 
-                            // Since this is a separate component, let's just use a simple force update or reliance on CSS classes if we styled based on .dark parent (which we do for colors).
-                            // But for the Icon itself (Sun/Moon), we need state.
-                        }}
-                        className="p-2 rounded-full text-gray-500 hover:text-sikai-primary transition-colors"
                 <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 ml-2">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 text-gray-500 hover:text-sikai-primary transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
-                        >
-                            {isDark ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
-                        </button>
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 text-gray-500 hover:text-sikai-primary transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
+                    >
+                        {isDark ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
+                    </button>
 
-                        <button
-                            onClick={() => signOut()}
-                            className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
-                        >
-                            <LogOut className="w-6 h-6" />
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => signOut()}
+                        className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
+                    >
+                        <LogOut className="w-6 h-6" />
+                    </button>
+                </div>
             </nav>
         </div>
     );
