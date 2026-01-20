@@ -206,7 +206,7 @@ function Sidebar() {
                         {collapsed ? (
                             // Collapsed View
                             <div className="flex flex-col items-center gap-1 group cursor-default" title={`Créditos Disponibles: ${credits ?? 0}`}>
-                                <Coins className="w-5 h-5 text-yellow-500 dark:text-yellow-400 group-hover:rotate-12 transition-transform" />
+                                <Coins className="w-5 h-5 text-sikai-cyan dark:text-sikai-cyan group-hover:rotate-12 transition-transform" />
                                 <span className="text-[10px] font-bold text-gray-900 dark:text-white font-mono">{credits ?? 0}</span>
                             </div>
                         ) : (
@@ -219,14 +219,14 @@ function Sidebar() {
                                         <span className="text-xs font-normal text-gray-400">/ mes</span>
                                     </p>
                                 </div>
-                                <div className="w-10 h-10 rounded-full bg-yellow-400/10 flex items-center justify-center border border-yellow-400/20">
-                                    <Coins className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                                <div className="w-10 h-10 rounded-full bg-sikai-primary/10 flex items-center justify-center border border-sikai-primary/20">
+                                    <Coins className="w-5 h-5 text-sikai-primary dark:text-sikai-cyan" />
                                 </div>
                             </div>
                         )}
 
                         {!collapsed && (
-                            <Link to="/pricing" className="block mt-3 text-center text-xs text-sikai-accent hover:text-sikai-text transition-colors bg-sikai-accent/5 rounded-lg py-1.5 hover:bg-sikai-accent/10">
+                            <Link to="/pricing" className="block mt-3 text-center text-xs text-sikai-primary hover:text-white transition-colors bg-sikai-primary/10 rounded-lg py-1.5 hover:bg-sikai-primary">
                                 Recargar
                             </Link>
                         )}
@@ -244,9 +244,9 @@ function Sidebar() {
                 >
                     <div className={twMerge("transition-transform duration-500 rotate-0", isDark ? "rotate-0" : "rotate-180")}>
                         {isDark ? (
-                            <Moon className="w-5 h-5 text-sikai-accent" />
+                            <Moon className="w-5 h-5 text-sikai-primary" />
                         ) : (
-                            <Sun className="w-5 h-5 text-yellow-500 dark:text-yellow-400 group-hover:scale-110" />
+                            <Sun className="w-5 h-5 text-sikai-primary dark:text-sikai-cyan group-hover:scale-110" />
                         )}
                     </div>
                     {!collapsed && (
