@@ -88,7 +88,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
             {/* Header Content - Compact & Clean */}
             <div className="text-center mb-8 space-y-2">
                 <h1 className="text-4xl md:text-6xl font-headline font-bold text-gray-900 dark:text-white tracking-tight">
-                    Digitalización <span className="text-sikai-accent drop-shadow-[0_0_15px_rgba(38,216,196,0.3)]">Inteligente</span>
+                    Digitalización <span className="text-sikai-accent drop-shadow-[0_0_15px_rgba(26,136,255,0.4)]">Inteligente</span>
                 </h1>
                 <p className="text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto leading-relaxed">
                     Extrae datos de tus facturas en segundos con nuestra IA.
@@ -104,7 +104,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                     "bg-white/80 border-gray-300 hover:border-sikai-accent/50 hover:bg-gray-50",
                     "dark:bg-black/40 dark:border-gray-700/50 dark:hover:bg-black/60",
                     isDragging
-                        ? "border-sikai-accent shadow-[0_0_40px_rgba(38,216,196,0.2)] bg-sikai-accent/5"
+                        ? "border-sikai-accent shadow-[0_0_40px_rgba(26,136,255,0.3)] bg-sikai-accent/5"
                         : "",
                 )}
                 onDrop={handleDrop}
@@ -127,7 +127,7 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                             <img
                                 src="/sikai-logo.png"
                                 alt="Procesando..."
-                                className="w-24 h-24 object-contain animate-pulse drop-shadow-[0_0_20px_rgba(38,216,196,0.6)]"
+                                className="w-24 h-24 object-contain animate-pulse drop-shadow-[0_0_20px_rgba(26,136,255,0.6)]"
                             />
                             <div className="absolute -inset-4 bg-sikai-accent/20 rounded-full blur-xl animate-pulse"></div>
                         </div>

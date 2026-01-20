@@ -48,7 +48,7 @@ export function Login() {
                 <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-sikai-dark to-sikai-accent left-0"></div>
 
                 <div className="flex justify-center mb-6">
-                    <img src="/sikai-logo.png" alt="Sikai Logo" className="h-20 w-20 object-contain rounded-xl border-2 border-sikai-accent/50 shadow-[0_0_15px_rgba(30,215,96,0.3)]" />
+                    <img src="/sikai-logo.png" alt="Sikai Logo" className="h-20 w-20 object-contain rounded-xl border-2 border-sikai-accent/50 shadow-[0_0_15px_rgba(26,136,255,0.4)]" />
                 </div>
                 <h2 className="text-3xl font-headline font-bold text-white mb-2">Bienvenido a SIKAI</h2>
                 <p className="text-gray-400 mb-8">Inicia sesión para gestionar tus facturas</p>
