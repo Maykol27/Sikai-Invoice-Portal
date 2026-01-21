@@ -71,6 +71,11 @@ export const triggerSmartExport = (
             if (h.includes('estampilla')) return 0;
             if (h.includes('impoconsumo')) return 0;
 
+            // Priority 5: Safety for likely numeric fields used in formulas
+            // If we haven't found a match yet, but the header sounds numeric, return 0 instead of ""
+            const numericKeywords = ['descuento', 'rete', 'valor', 'saldo', 'abono', 'ajuste', 'copago', 'base', 'anticipo'];
+            if (numericKeywords.some(key => h.includes(key))) return 0;
+
             return '';
         };
 
