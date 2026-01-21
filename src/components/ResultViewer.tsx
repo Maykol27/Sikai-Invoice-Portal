@@ -217,7 +217,7 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
                                 <h2 className="text-3xl font-headline font-bold text-white">
                                     Procesado por <span className="text-sikai-accent">SIKAI Intelligence</span>
                                 </h2>
-                                <span className="bg-sikai-accent/10 text-sikai-accent text-xs font-bold px-2 py-1 rounded border border-sikai-accent/20">v3.0</span>
+                                <span className="bg-sikai-accent/10 text-sikai-accent text-xs font-bold px-2 py-1 rounded border border-sikai-accent/20">v3.1</span>
                             </div>
                             <p className="text-gray-400 text-sm flex items-center gap-2 bg-black/30 w-fit px-3 py-1 rounded-full border border-white/5">
                                 <Building2 size={14} className="text-sikai-accent" />
