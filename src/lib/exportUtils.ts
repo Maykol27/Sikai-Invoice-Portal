@@ -5,7 +5,8 @@ export type ExportType = 'csv' | 'xlsx' | 'json' | 'txt';
 export const triggerSmartExport = (
     file: File,
     dataList: any[], // Array of scan objects or result objects
-    onComplete?: () => void
+    onComplete?: () => void,
+    customTaxValue?: number
 ) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -14,28 +15,49 @@ export const triggerSmartExport = (
         const wsName = wbTemplate.SheetNames[0];
         const wsTemplate = wbTemplate.Sheets[wsName];
 
-        // 1. Get Template Headers (Row 1)
-        const headers: string[] = [];
+        // 1. Get Template Headers (Row 1 - index 0) and Formulae (Row 2 - index 1)
+        const headerRowIndex = 0;
+        const templateRowIndex = 1; // Assuming Row 2 contains the "template" logic/formulas
+
+        const headers: { col: number, text: string, type: 'value' | 'formula', formula?: string }[] = [];
+
+        // Find range
         const range = XLSX.utils.decode_range(wsTemplate['!ref'] || 'A1:A1');
+
         for (let C = range.s.c; C <= range.e.c; ++C) {
-            const cell = wsTemplate[XLSX.utils.encode_cell({ r: 0, c: C })];
-            headers.push(cell ? cell.v : '');
+            const headerCellRef = XLSX.utils.encode_cell({ r: headerRowIndex, c: C });
+            const headerCell = wsTemplate[headerCellRef];
+            const headerText = headerCell ? String(headerCell.v) : '';
+
+            // Check formula in template row
+            const tplCellRef = XLSX.utils.encode_cell({ r: templateRowIndex, c: C });
+            const tplCell = wsTemplate[tplCellRef];
+
+            if (tplCell && tplCell.f) {
+                headers.push({ col: C, text: headerText, type: 'formula', formula: tplCell.f });
+            } else {
+                headers.push({ col: C, text: headerText, type: 'value' });
+            }
         }
 
-        // 2. Map Data Use Heuristics
-        const mappedData: any[] = [];
-
+        // 2. Map Data Helper
         const getValue = (item: any, scanResult: any, header: string): any => {
             const h = header.toLowerCase();
+
+            // Priority 0: Custom Tax Override
+            if (customTaxValue !== undefined && (h.includes('impuesto') || h.includes('iva'))) {
+                return customTaxValue;
+            }
 
             // Priority 1: Direct Item Match
             if (h.includes('descrip') || h.includes('nombre') || h.includes('producto')) return item.description || '';
             if (h.includes('cantidad') || h.includes('cant')) return item.quantity || 0;
             if ((h.includes('precio') || h.includes('unitario')) && !h.includes('total')) return item.unit_price || 0;
             if (h.includes('medida') || h.includes('unidad')) return item.unit_measure || 'Und';
+            // Note: Tax check below only falls through if customTaxValue was NOT provided
             if (h.includes('impuesto') || h.includes('iva')) return item.tax_amount || 0;
 
-            // Priority 2: Calculated Item Match
+            // Priority 2: Calculated Item Match (Only if NOT formula column - handled by main loop)
             if (h.includes('subtotal')) return (item.unit_price || 0) * (item.quantity || 0);
             if (h.includes('total')) return item.total || 0;
 
@@ -52,42 +74,63 @@ export const triggerSmartExport = (
             return '';
         };
 
-        dataList.forEach(data => {
-            // Support both direct result objects or wrapped scan objects
-            const result = data.result || data;
-            const isItemTemplate = headers.some(h => h.toLowerCase().includes('cantidad') || h.toLowerCase().includes('descrip'));
+        // 3. Write Data
+        // We start writing at Row 2 (index 1), effectively overwriting the template row and expanding
+        let currentRow = 1;
 
-            if (isItemTemplate) {
-                const items = result.items || [];
-                if (items.length > 0) {
-                    items.forEach((item: any) => {
-                        const row: any = {};
-                        headers.forEach(header => {
-                            row[header] = getValue(item, result, header);
+        dataList.forEach(data => {
+            const result = data.result || data;
+            const items = result.items || [];
+            const rowsToWrite = items.length > 0 ? items : [{}];
+
+            rowsToWrite.forEach((item: any) => {
+                headers.forEach(hObj => {
+                    const cellRef = XLSX.utils.encode_cell({ r: currentRow, c: hObj.col });
+
+                    if (hObj.type === 'formula' && hObj.formula) {
+                        // Shift Formula
+                        // Simple regex to shift row numbers by offset
+                        const offset = currentRow - templateRowIndex;
+                        const newFormula = hObj.formula.replace(/([A-Z]+)(\d+)/g, (_match, col, row) => {
+                            // If row matches the template row index (+1 for 1-based), shift it
+                            // Or just shift ALL row refs assuming relative? 
+                            // Let's assume standard relative rows.
+                            const rNum = parseInt(row);
+                            return `${col}${rNum + offset}`;
                         });
-                        mappedData.push(row);
-                    });
-                } else {
-                    const row: any = {};
-                    headers.forEach(header => {
-                        row[header] = getValue({}, result, header);
-                    });
-                    mappedData.push(row);
-                }
-            } else {
-                const row: any = {};
-                headers.forEach(header => {
-                    row[header] = getValue({}, result, header);
+
+                        wsTemplate[cellRef] = { t: 'n', f: newFormula };
+                    } else {
+                        // Value
+                        const val = getValue(item, result, hObj.text);
+                        if (val !== undefined && val !== '') {
+                            wsTemplate[cellRef] = {
+                                v: val,
+                                t: typeof val === 'number' ? 'n' : 's'
+                            };
+                        } else {
+                            // Ensure cell is cleared if it had content
+                            wsTemplate[cellRef] = { v: '', t: 's' };
+                        }
+                    }
                 });
-                mappedData.push(row);
-            }
+                currentRow++;
+            });
         });
 
-        // 3. Generate New Excel
-        const wsNew = XLSX.utils.json_to_sheet(mappedData, { header: headers });
-        const wbNew = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wbNew, wsNew, "Exportación SIKAI");
-        XLSX.writeFile(wbNew, `sikai_smart_export_${new Date().getTime()}.xlsx`);
+        // Update Range
+        const newRange = {
+            s: range.s,
+            e: { c: range.e.c, r: currentRow - 1 }
+        };
+        wsTemplate['!ref'] = XLSX.utils.encode_range(newRange);
+
+        // 4. Download
+        // We output the SAME workbook structure, just modified sheet
+        const wbOut = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wbOut, wsTemplate, wsName);
+
+        XLSX.writeFile(wbOut, `sikai_smart_export_${new Date().getTime()}.xlsx`);
 
         if (onComplete) onComplete();
     };

@@ -16,6 +16,7 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
     const [showExportMenu, setShowExportMenu] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [customTax, setCustomTax] = useState<string>('');
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -58,10 +59,12 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        const taxVal = customTax ? parseFloat(customTax) : undefined;
+
         triggerSmartExport(file, [data], () => {
             setShowExportMenu(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
-        });
+        }, taxVal);
     };
 
     const fieldIcons: Record<string, any> = {
@@ -163,6 +166,18 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
                                     <FileText className="w-4 h-4 text-yellow-500" />
                                     JSON (.json)
                                 </button>
+                            </div>
+                            <div className="h-px bg-gray-700 mx-2 my-1"></div>
+                            <div className="px-4 py-2">
+                                <label className="text-xs text-gray-400 block mb-1">Impuesto por Producto</label>
+                                <input
+                                    type="number"
+                                    placeholder="Ej. 19"
+                                    className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:border-sikai-accent outline-none placeholder:text-gray-600"
+                                    value={customTax}
+                                    onChange={(e) => setCustomTax(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                             </div>
                             <div className="h-px bg-gray-700 mx-2 my-1"></div>
                             <div className="p-1">
