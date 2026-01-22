@@ -87,7 +87,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                     .from('provider_learning')
                     .select('category_id')
                     .eq('provider_name', result.provider_name)
-                    .single();
+                    .maybeSingle();
                 if (data) setSelectedCategory(data.category_id);
             };
             checkProvider();

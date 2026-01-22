@@ -14,18 +14,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 1. Initialize Supabase Admin Client
+    // 1. Initialize Supabase Client with User Context
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const authHeader = req.headers.get('Authorization');
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Error de configuración del servidor: Faltan variables de entorno (SUPABASE_URL o KEY)');
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Error de configuración: Faltan variables de entorno standard');
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
-
-    // 2. Get User from Auth Header
-    const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       console.error("Missing Authorization Header");
       return new Response(JSON.stringify({ error: 'Missing Authorization Header' }), {
@@ -34,8 +31,13 @@ Deno.serve(async (req) => {
       })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+    // Create client scoped to the user
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // 2. Verify User
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
     if (userError || !user) {
       console.error("Auth Error:", userError);

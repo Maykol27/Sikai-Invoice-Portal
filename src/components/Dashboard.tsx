@@ -202,8 +202,8 @@ export function Dashboard() {
                         <span className="w-2 h-6 bg-sikai-primary rounded-full"></span>
                         Histórico de Gastos
                     </h3>
-                    <div style={{ width: '100%', height: 300 }}>
-                        <ResponsiveContainer minWidth={0} minHeight={0}>
+                    <div className="w-full h-[300px]">
+                        <ResponsiveContainer width="99%" height="100%">
                             <AreaChart data={stats.timelineData}>
                                 <defs>
                                     <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
@@ -260,9 +260,9 @@ export function Dashboard() {
                         <span className="w-2 h-6 bg-sikai-cyan rounded-full"></span>
                         Top Proveedores
                     </h3>
-                    <div style={{ width: '100%', height: 300 }} className="flex items-center justify-center min-h-[300px]">
+                    <div className="w-full h-[300px] flex items-center justify-center">
                         {stats.providerData.length > 0 ? (
-                            <ResponsiveContainer minWidth={0} minHeight={0}>
+                            <ResponsiveContainer width="99%" height="100%">
                                 <PieChart>
                                     <Pie
                                         data={stats.providerData}
