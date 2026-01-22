@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Mic, Loader2 } from 'lucide-react';
+import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { SikaiBrain } from './SikaiBrain';
 import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
