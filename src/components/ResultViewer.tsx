@@ -521,7 +521,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                 </div>
             </div>
             {/* Floating Voice Button */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+            <div className="fixed bottom-32 md:bottom-6 right-6 z-50 flex flex-col items-end gap-2 transition-all duration-300">
                 {isAdjusting && (
                     <div className="bg-black/80 backdrop-blur text-white px-4 py-2 rounded-lg text-sm mb-2 shadow-xl animate-in fade-in slide-in-from-bottom-2 border border-sikai-accent/20 flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sikai-accent" />
