@@ -260,7 +260,7 @@ export function Dashboard() {
                         <span className="w-2 h-6 bg-sikai-cyan rounded-full"></span>
                         Top Proveedores
                     </h3>
-                    <div style={{ width: '100%', height: 300 }} className="flex items-center justify-center">
+                    <div style={{ width: '100%', height: 300 }} className="flex items-center justify-center min-h-[300px]">
                         {stats.providerData.length > 0 ? (
                             <ResponsiveContainer>
                                 <PieChart>
