@@ -337,28 +337,29 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sikai-dark to-sikai-accent"></div>
 
                 {/* Banner SIKAI */}
-                <div className="p-8 border-b border-gray-700/50 bg-black/40">
+                {/* Banner SIKAI */}
+                <div className="p-8 border-b border-gray-200 dark:border-gray-700/50 bg-white/50 dark:bg-black/40 backdrop-blur-md">
                     <div className="flex flex-col md:flex-row md:items-center gap-6">
-                        <div className="w-16 h-16 rounded-2xl bg-sikai-accent/20 flex items-center justify-center text-sikai-accent shadow-[0_0_20px_rgba(38,216,196,0.2)]">
+                        <div className="w-16 h-16 rounded-2xl bg-sikai-accent/10 dark:bg-sikai-accent/20 flex items-center justify-center text-sikai-accent shadow-[0_0_20px_rgba(38,216,196,0.2)]">
                             <CheckCircle className="w-8 h-8" />
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                                <h2 className="text-3xl font-headline font-bold text-white">
-                                    Procesado por <span className="text-sikai-accent">SIKAI Intelligence</span>
+                                <h2 className="text-3xl font-headline font-bold text-gray-900 dark:text-white">
+                                    Procesado por <span className="text-transparent bg-clip-text bg-gradient-to-r from-sikai-primary to-sikai-accent font-extrabold">SIKAI Intelligence</span>
                                 </h2>
-                                <span className="bg-sikai-accent/10 text-sikai-accent text-xs font-bold px-2 py-1 rounded border border-sikai-accent/20">v3.1</span>
+                                <span className="bg-sikai-primary/10 text-sikai-primary text-xs font-bold px-2 py-1 rounded border border-sikai-primary/20">v3.1</span>
                             </div>
-                            <p className="text-gray-400 text-sm flex items-center gap-2 bg-black/30 w-fit px-3 py-1 rounded-full border border-white/5">
-                                <Building2 size={14} className="text-sikai-accent" />
-                                {data.provider_name || 'Proveedor desconocido'}
-                                <span className="text-gray-600">|</span>
-                                <span className="text-gray-300">{data.invoice_number || 'S/N'}</span>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-2 bg-gray-100 dark:bg-black/30 w-fit px-3 py-1 rounded-full border border-gray-200 dark:border-white/5 font-medium">
+                                <Building2 size={14} className="text-sikai-primary" />
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">{data.provider_name || 'Proveedor desconocido'}</span>
+                                <span className="text-gray-400 dark:text-gray-600">|</span>
+                                <span className="text-gray-600 dark:text-gray-300 font-mono">{data.invoice_number || 'S/N'}</span>
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-500 mb-1">Total Operación</p>
-                            <div className="text-4xl font-mono font-bold text-white tracking-tight">
+                            <p className="text-sm text-gray-500 mb-1 font-medium">Total Operación</p>
+                            <div className="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-tight">
                                 {data.total_amount ? formatCurrency(data.total_amount) : '$0'}
                             </div>
                         </div>
@@ -367,8 +368,8 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
 
                 <div className="p-8">
                     <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <FileText className="text-sikai-accent" size={20} />
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <FileText className="text-sikai-primary" size={20} />
                             Datos Extraídos
                         </h3>
                         <span className="text-xs text-sikai-accent bg-sikai-accent/10 px-3 py-1 rounded-full border border-sikai-accent/20">

@@ -30,11 +30,11 @@ export function SikaiBrain({ state, onClick, className, size = 'md' }: SikaiBrai
             <div
                 onClick={onClick}
                 className={cn(
-                    "relative z-10 bg-[#0f1218] rounded-full border border-sikai-accent/30 shadow-[0_0_15px_rgba(38,216,196,0.3)] flex items-center justify-center transition-all duration-300 overflow-hidden",
+                    "relative z-10 rounded-full flex items-center justify-center transition-all duration-300 overflow-visible",
                     sizeClasses[size],
-                    state === 'idle' && "hover:scale-110 hover:shadow-[0_0_25px_rgba(26,136,255,0.5)]",
-                    state === 'processing' && "animate-spin-slow border-t-sikai-accent border-r-transparent border-b-sikai-accent border-l-transparent",
-                    state === 'speaking' && "ring-2 ring-sikai-primary animate-bounce-slight"
+                    state === 'idle' && "hover:scale-110 filter drop-shadow-[0_0_15px_rgba(26,136,255,0.4)]",
+                    state === 'processing' && "animate-pulse brightness-110",
+                    state === 'speaking' && "animate-bounce-slight"
                 )}
             >
                 <img
