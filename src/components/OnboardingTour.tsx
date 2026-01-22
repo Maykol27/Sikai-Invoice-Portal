@@ -53,6 +53,7 @@ export function OnboardingTour() {
             color: "text-blue-500"
         },
         {
+            icon: History,
             title: "Historial Detallado",
             description: "Consulta, filtra y exporta el registro completo de todas tus facturas digitalizadas.",
             color: "text-purple-500"
