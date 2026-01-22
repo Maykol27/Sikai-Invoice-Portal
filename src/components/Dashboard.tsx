@@ -203,7 +203,7 @@ export function Dashboard() {
                         Histórico de Gastos
                     </h3>
                     <div className="w-full h-[300px]">
-                        <ResponsiveContainer width="99%" height="100%">
+                        <ResponsiveContainer width="99%" height="100%" minWidth={0}>
                             <AreaChart data={stats.timelineData}>
                                 <defs>
                                     <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
@@ -262,7 +262,7 @@ export function Dashboard() {
                     </h3>
                     <div className="w-full h-[300px] flex items-center justify-center">
                         {stats.providerData.length > 0 ? (
-                            <ResponsiveContainer width="99%" height="100%">
+                            <ResponsiveContainer width="99%" height="100%" minWidth={0}>
                                 <PieChart>
                                     <Pie
                                         data={stats.providerData}

@@ -11,27 +11,38 @@ Deno.serve(async (req) => {
     }
 
     try {
-        // 1. Initialize Supabase (for Auth check)
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-        if (!supabaseUrl || !supabaseKey) throw new Error('Missing Supabase Config')
+        // 1. Initialize Supabase Client with User Context
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+        const authHeader = req.headers.get('Authorization');
 
-        const supabaseAdmin = createClient(supabaseUrl, supabaseKey)
+        if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error('Error de configuración: Faltan variables de entorno standard');
+        }
 
-        // 2. Auth Check
-        const authHeader = req.headers.get('Authorization')
         if (!authHeader) {
             return new Response(JSON.stringify({ error: 'Missing Authorization Header' }), {
-                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
         }
 
-        const token = authHeader.replace('Bearer ', '')
-        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+        // Create client scoped to the user
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        });
+
+        // 2. Verify User
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
         if (userError || !user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            console.error("Auth Error Full Object:", JSON.stringify(userError));
+            return new Response(JSON.stringify({
+                error: 'Unauthorized',
+                details: userError
+            }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             })
         }
 
@@ -41,16 +52,14 @@ Deno.serve(async (req) => {
             throw new Error('Missing currentData or userPrompt')
         }
 
-        // 3a. Log partial history (User Request) - Optional, or we log at the end with result.
-        // We will log at the end to save tokens/db calls, or start a transaction if needed.
-        // For now, simple insert after success.
-
         // 4. Call Gemini
         const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
         if (!geminiApiKey) throw new Error('Missing Gemini API Key')
 
-        const model = 'gemini-1.5-flash-002' // Using 1.5 Flash 002 for stability and precision
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`
+        const model = 'gemini-2.0-flash-exp'; // UPDATED MODEL
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+
+        console.log(`Calling Gemini Model: ${model}`);
 
         const systemPrompt = `
       You are an EXPERT ACCOUNTING AI for SIKAI CX.
@@ -108,10 +117,10 @@ Deno.serve(async (req) => {
         const parsedResult = parsedResponse.result || parsedResponse
         const suggestedRule = parsedResponse.suggested_rule || null
 
-        // 5. Log History (Smart Agent)
+        // 5. Log History (Smart Agent) - Use user-scoped client
         if (scanId) {
-            const { error: historyError } = await supabaseAdmin.from('adjustment_history').insert({
-                user_id: user.id,
+            const { error: historyError } = await supabaseClient.from('adjustment_history').insert({
+                user_id: user.id, // Confirmed ID from token
                 scan_id: scanId,
                 user_prompt: userPrompt,
                 previous_data: currentData,
