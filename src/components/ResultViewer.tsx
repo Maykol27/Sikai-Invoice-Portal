@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Mic, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
+import { SikaiBrain } from './SikaiBrain';
 import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
 
 interface ResultViewerProps {
@@ -505,24 +506,13 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                     </div>
                 )}
 
-                <button
+                <SikaiBrain
+                    state={isListening ? 'listening' : isAdjusting ? 'processing' : 'idle'}
                     onClick={handleVoiceClick}
-                    disabled={isAdjusting}
-                    className={cn(
-                        "w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-105",
-                        isListening
-                            ? "bg-red-500 animate-pulse ring-4 ring-red-500/30"
-                            : "bg-gradient-to-br from-sikai-accent to-sikai-primary text-black hover:shadow-sikai-accent/40"
-                    )}
-                >
-                    {isListening ? (
-                        <Mic className="w-8 h-8 text-white" />
-                    ) : isAdjusting ? (
-                        <Loader2 className="w-8 h-8 animate-spin text-black/50" />
-                    ) : (
-                        <Mic className="w-8 h-8 text-black" />
-                    )}
-                </button>
+                    className="w-20 h-20 shadow-2xl hover:scale-110 transition-transform"
+                    size="lg"
+                />
+
                 {isListening && <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">Escuchando...</span>}
             </div>
         </div>
