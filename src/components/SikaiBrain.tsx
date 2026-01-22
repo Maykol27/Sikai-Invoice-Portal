@@ -62,13 +62,7 @@ export function SikaiBrain({ state, onClick, className, size = 'md' }: SikaiBrai
                 )}
             </div>
 
-            {/* Teaching Bubble / Tooltip (Only visible in idle/hover) */}
-            {state === 'idle' && size !== 'sm' && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white text-black px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none border border-sikai-accent">
-                    ¡Hazme click para ayudarte!
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white rotate-45 border-r border-b border-sikai-accent"></div>
-                </div>
-            )}
+
         </div>
     );
 }
