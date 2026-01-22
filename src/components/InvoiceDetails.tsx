@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag, History, MessageSquare, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn, formatCurrency } from '../lib/utils';
+import { SikaiBrain } from './SikaiBrain';
 import { triggerStandardExport } from '../lib/exportUtils';
 
 interface InvoiceDetailsProps {
@@ -379,32 +380,75 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                         No hay registros de cambios por voz.
                                     </div>
                                 ) : (
-                                    historyLogs.map((log) => (
-                                        <div key={log.id} className="bg-gray-800/20 border border-gray-800 rounded-xl p-4">
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-sikai-accent/10 flex items-center justify-center text-sikai-accent shrink-0 border border-sikai-accent/20">
-                                                    <MessageSquare size={18} />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="text-sm font-bold text-white">Solicitud de Cambio</h4>
-                                                        <span className="text-xs text-gray-500">
-                                                            {new Date(log.created_at).toLocaleString()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="bg-black/30 p-3 rounded-lg border border-gray-800 mb-3">
-                                                        <p className="text-gray-300 text-sm italic">"{log.user_prompt}"</p>
-                                                    </div>
+                                    historyLogs.map((log) => {
+                                        // Calculate Diff on the fly
+                                        const prev = log.previous_data || {};
+                                        const curr = log.new_data || {};
+                                        const changes: { key: string, old: any, new: any }[] = [];
 
-                                                    {/* We could show a specific diff here if we computed it */}
-                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                        <ArrowRightLeft size={12} />
-                                                        <span>Cambios aplicados automáticamente por el Agente IA</span>
+                                        // Simple 1-level diff for key fields
+                                        const keysToCheck = [
+                                            'total_amount', 'date', 'provider_name', 'invoice_number',
+                                            'subtotal', 'iva_amount', 'nit', 'payment_method'
+                                        ];
+
+                                        keysToCheck.forEach(k => {
+                                            if (JSON.stringify(prev[k]) !== JSON.stringify(curr[k])) {
+                                                changes.push({ key: k, old: prev[k], new: curr[k] });
+                                            }
+                                        });
+
+                                        // Check items length change
+                                        if (prev.items?.length !== curr.items?.length) {
+                                            changes.push({ key: 'items', old: `${prev.items?.length || 0} items`, new: `${curr.items?.length || 0} items` });
+                                        }
+
+                                        return (
+                                            <div key={log.id} className="bg-gray-800/20 border border-gray-800 rounded-xl p-4">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-sikai-accent/10 flex items-center justify-center text-sikai-accent shrink-0 border border-sikai-accent/20">
+                                                        <MessageSquare size={18} />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <h4 className="text-sm font-bold text-white">Solicitud de Cambio</h4>
+                                                            <span className="text-xs text-gray-500">
+                                                                {new Date(log.created_at).toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="bg-black/30 p-3 rounded-lg border border-gray-800 mb-3">
+                                                            <p className="text-gray-300 text-sm italic">"{log.user_prompt}"</p>
+                                                        </div>
+
+                                                        {/* Diff Visualization */}
+                                                        <div className="space-y-1">
+                                                            {changes.length > 0 ? (
+                                                                changes.map((change, idx) => (
+                                                                    <div key={idx} className="flex items-center gap-2 text-xs">
+                                                                        <span className="text-gray-500 uppercase font-bold w-20 truncate" title={change.key}>
+                                                                            {fieldLabels[change.key] || change.key}
+                                                                        </span>
+                                                                        <span className="text-red-400 line-through">
+                                                                            {String(change.old || 'Vacío')}
+                                                                        </span>
+                                                                        <ArrowRightLeft size={10} className="text-gray-600" />
+                                                                        <span className="text-sikai-accent font-mono font-medium">
+                                                                            {String(change.new)}
+                                                                        </span>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                                    <ArrowRightLeft size={12} />
+                                                                    <span>Cambios complejos o estructurales aplicados.</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         )}
