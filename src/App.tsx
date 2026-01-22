@@ -37,7 +37,11 @@ function ScannerPage() {
   const [scanResult, setScanResult] = useState<any>(null);
 
   return scanResult ? (
-    <ResultViewer data={scanResult} onReset={() => setScanResult(null)} />
+    <ResultViewer
+      data={scanResult}
+      onReset={() => setScanResult(null)}
+      onUpdate={(newData: any) => setScanResult(newData)}
+    />
   ) : (
     <InvoiceScanner onScanComplete={setScanResult} />
   );

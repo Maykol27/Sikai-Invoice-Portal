@@ -1,22 +1,96 @@
 
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
-import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Mic, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
 
 interface ResultViewerProps {
     data: any;
     onReset: () => void;
+    onUpdate?: (data: any) => void;
 }
 
 
-export function ResultViewer({ data, onReset }: ResultViewerProps) {
+export function ResultViewer({ data, onReset, onUpdate }: ResultViewerProps) {
     const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
     const [showExportMenu, setShowExportMenu] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [customTax, setCustomTax] = useState<string>('');
+
+    // Voice State
+    const [isListening, setIsListening] = useState(false);
+    const [isAdjusting, setIsAdjusting] = useState(false);
+    const recognitionRef = useRef<any>(null);
+
+    const handleVoiceClick = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Tu navegador no soporta comandos de voz. Intenta con Chrome.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.lang = 'es-CO';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsListening(true);
+
+        recognition.onresult = async (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            console.log("Comando de voz:", transcript);
+            setIsListening(false);
+
+            if (transcript.trim().length > 0) {
+                await processVoiceAdjustment(transcript);
+            }
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error("Error voz:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.onend = () => setIsListening(false);
+
+        recognition.start();
+    };
+
+    const processVoiceAdjustment = async (prompt: string) => {
+        setIsAdjusting(true);
+        try {
+            const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
+                body: {
+                    currentData: data,
+                    userPrompt: prompt
+                }
+            });
+
+            if (error) throw error;
+            if (responseData?.error) throw new Error(responseData.error);
+
+            if (responseData?.result) {
+                if (onUpdate) {
+                    onUpdate(responseData.result);
+                }
+            }
+        } catch (e: any) {
+            console.error("Error adjusting invoice:", e);
+            alert(`Error ajustando factura: ${e.message}`);
+        } finally {
+            setIsAdjusting(false);
+        }
+    };
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -387,6 +461,35 @@ export function ResultViewer({ data, onReset }: ResultViewerProps) {
                         </div>
                     )}
                 </div>
+            </div>
+            {/* Floating Voice Button */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+                {isAdjusting && (
+                    <div className="bg-black/80 backdrop-blur text-white px-4 py-2 rounded-lg text-sm mb-2 shadow-xl animate-in fade-in slide-in-from-bottom-2 border border-sikai-accent/20 flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-sikai-accent" />
+                        <span className="text-sikai-accent">AI</span> Procesando cambios...
+                    </div>
+                )}
+
+                <button
+                    onClick={handleVoiceClick}
+                    disabled={isAdjusting}
+                    className={cn(
+                        "w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-105",
+                        isListening
+                            ? "bg-red-500 animate-pulse ring-4 ring-red-500/30"
+                            : "bg-gradient-to-br from-sikai-accent to-sikai-primary text-black hover:shadow-sikai-accent/40"
+                    )}
+                >
+                    {isListening ? (
+                        <Mic className="w-8 h-8 text-white" />
+                    ) : isAdjusting ? (
+                        <Loader2 className="w-8 h-8 animate-spin text-black/50" />
+                    ) : (
+                        <Mic className="w-8 h-8 text-black" />
+                    )}
+                </button>
+                {isListening && <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">Escuchando...</span>}
             </div>
         </div>
     );
