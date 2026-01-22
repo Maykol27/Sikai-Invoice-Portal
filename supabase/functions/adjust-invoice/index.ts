@@ -36,10 +36,14 @@ Deno.serve(async (req) => {
         }
 
         // 3. Parse Request
-        const { currentData, userPrompt } = await req.json()
+        const { currentData, userPrompt, scanId } = await req.json()
         if (!currentData || !userPrompt) {
             throw new Error('Missing currentData or userPrompt')
         }
+
+        // 3a. Log partial history (User Request) - Optional, or we log at the end with result.
+        // We will log at the end to save tokens/db calls, or start a transaction if needed.
+        // For now, simple insert after success.
 
         // 4. Call Gemini
         const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
@@ -57,8 +61,17 @@ Deno.serve(async (req) => {
          - Example: "The beer is a 6-pack for 47,600 total" -> You must logic: Price = 47600/6. Update Unit Price (~7933), Quantity = 6. Update Line Total.
          - Example: "Change tax to 19%" -> Recalculate tax amounts for items and total tax.
       
-      2. **Structure**: Return ONLY the modified JSON. It must match the original structure exactly.
-      3. **Context**: The user might speak colloquially. Interpret their intent intelligently.
+      2. **Structure**: Return ONLY a JSON object with this EXACT structure:
+         {
+           "result": { ...modified invoice data... },
+           "suggested_rule": {
+              "input_pattern": "string (the original text that caused the issue, e.g. 'PL' or 'Cerveza')",
+              "output_product_name": "string (the new corrected name, e.g. 'Pilsen')",
+              "output_quantity_factor": number (e.g. 6 if it was a 6-pack, otherwise 1)
+           } OR null
+         }
+
+      3. **Rule Detection**: If the user is renaming a product or changing its unit logic (e.g. "This comes in boxes of 24"), suggest a rule so we can do this automatically next time.
       4. **Safety**: If the request is nonsensical, return the original JSON unmodified.
     `
 
@@ -89,9 +102,26 @@ Deno.serve(async (req) => {
         if (!text) throw new Error('No response from AI')
 
         const cleanText = text.replace(/```json\n ?|\n ?```/g, "").trim()
-        const parsedResult = JSON.parse(cleanText)
+        const parsedResponse = JSON.parse(cleanText)
 
-        return new Response(JSON.stringify({ result: parsedResult }), {
+        // Handle both old format (just result) and new format (result + suggested_rule) for safety
+        const parsedResult = parsedResponse.result || parsedResponse
+        const suggestedRule = parsedResponse.suggested_rule || null
+
+        // 5. Log History (Smart Agent)
+        if (scanId) {
+            const { error: historyError } = await supabaseAdmin.from('adjustment_history').insert({
+                user_id: user.id,
+                scan_id: scanId,
+                user_prompt: userPrompt,
+                previous_data: currentData,
+                new_data: parsedResult,
+                created_at: new Date().toISOString()
+            })
+            if (historyError) console.error("History Log Error:", historyError)
+        }
+
+        return new Response(JSON.stringify({ result: parsedResult, suggested_rule: suggestedRule }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
 

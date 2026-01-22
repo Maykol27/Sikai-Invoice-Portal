@@ -240,13 +240,58 @@ Deno.serve(async (req) => {
       throw new Error("La IA no devolvió texto.");
     }
 
-    const cleanText = text.replace(/```json\n ?|\n ? ```/g, "").trim();
+    const cleanText = text.replace(/```json\n ?|\n ?```/g, "").trim();
     let parsedResult;
     try {
       parsedResult = JSON.parse(cleanText);
     } catch (e) {
       console.error("JSON Parse Error. Clean Text:", cleanText);
       throw new Error("Fallo al leer respuesta de IA (JSON inválido)");
+    }
+
+    // 5.5. Apply Smart Product Rules (Phase 3)
+    if (parsedResult.provider_name && parsedResult.items && Array.isArray(parsedResult.items)) {
+      try {
+        const { data: rules } = await supabaseAdmin
+          .from('product_learning')
+          .select('*')
+          .eq('provider_name', parsedResult.provider_name)
+          .eq('user_id', user.id); // Scan is specific to user
+
+        if (rules && rules.length > 0) {
+          console.log(`Applying ${rules.length} rules for ${parsedResult.provider_name}`);
+
+          parsedResult.items = parsedResult.items.map((item: any) => {
+            const rule = rules.find((r: any) => {
+              // Simple substring or exact match check for now
+              // In future could be regex if stored as such
+              return item.description && item.description.includes(r.input_pattern);
+            });
+
+            if (rule) {
+              console.log(`Applying rule: ${rule.input_pattern} -> ${rule.output_product_name}`);
+              // Transformation Logic
+              // 1. Rename
+              item.description = rule.output_product_name;
+
+              // 2. Adjust Quantity/Price if factor > 1
+              // If detected "Sixpack", input Qty is 1, but Real Qty is 6.
+              // Unit Price should be divided by 6.
+              const factor = Number(rule.output_quantity_factor) || 1;
+              if (factor > 1) {
+                item.quantity = (item.quantity || 1) * factor;
+                if (item.unit_price) {
+                  item.unit_price = item.unit_price / factor;
+                }
+              }
+            }
+            return item;
+          });
+        }
+      } catch (ruleErr) {
+        console.error("Error applying rules:", ruleErr);
+        // Don't fail the scan if rules fail
+      }
     }
 
     // 6. Deduct Credit
@@ -263,18 +308,21 @@ Deno.serve(async (req) => {
     // Include 'name' in the insert (default to provider name or date if empty, handled by frontend usually but good to fallback)
     const scanName = name || parsedResult.provider_name || `Scan ${new Date().toLocaleDateString()} `;
 
-    const { error: scanError } = await supabaseAdmin.from('scans').insert({
+    const { data: insertedScan, error: scanError } = await supabaseAdmin.from('scans').insert({
       user_id: user.id,
       name: scanName,
       result: parsedResult,
       created_at: new Date().toISOString()
-    });
+    }).select(); // Select to return the ID
 
     if (scanError) {
       console.error("Failed to save scan", scanError);
     }
 
-    return new Response(JSON.stringify({ result: parsedResult }), {
+    return new Response(JSON.stringify({
+      result: parsedResult,
+      scanId: insertedScan?.[0]?.id || null
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 

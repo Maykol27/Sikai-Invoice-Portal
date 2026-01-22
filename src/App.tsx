@@ -40,7 +40,8 @@ function ScannerPage() {
     <ResultViewer
       data={scanResult}
       onReset={() => setScanResult(null)}
-      onUpdate={(newData: any) => setScanResult(newData)}
+      onUpdate={(newData: any) => setScanResult({ ...newData, scanId: scanResult.scanId })} // Keep scanId on update
+      scanId={scanResult.scanId}
     />
   ) : (
     <InvoiceScanner onScanComplete={setScanResult} />

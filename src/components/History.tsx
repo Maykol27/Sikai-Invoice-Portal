@@ -208,6 +208,7 @@ export function History() {
                     imageSrc={null}
                     onClose={() => setSelectedScan(null)}
                     title={selectedScan.name || selectedScan.result?.provider_name}
+                    scanId={selectedScan.id}
                 />
             )}
         </div>

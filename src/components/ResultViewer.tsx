@@ -10,10 +10,11 @@ interface ResultViewerProps {
     data: any;
     onReset: () => void;
     onUpdate?: (data: any) => void;
+    scanId?: string;
 }
 
 
-export function ResultViewer({ data, onReset, onUpdate }: ResultViewerProps) {
+export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerProps) {
     const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
     const [showExportMenu, setShowExportMenu] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -72,7 +73,8 @@ export function ResultViewer({ data, onReset, onUpdate }: ResultViewerProps) {
             const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
                 body: {
                     currentData: data,
-                    userPrompt: prompt
+                    userPrompt: prompt,
+                    scanId: scanId
                 }
             });
 
@@ -84,6 +86,38 @@ export function ResultViewer({ data, onReset, onUpdate }: ResultViewerProps) {
                     onUpdate(responseData.result);
                 }
             }
+
+            // Check for Smart Suggested Rules (Phase 3)
+            if (responseData?.suggested_rule) {
+                // We found a pattern! Ask user if they want to teach SIKAI
+                setTimeout(async () => {
+                    const confirmRule = window.confirm(
+                        `🧠 SIKAI Intelligence:\n\n` +
+                        `He detectado un patrón en tu corrección:\n` +
+                        `"${responseData.suggested_rule.input_pattern}"  👉  "${responseData.suggested_rule.output_product_name}"` +
+                        `${responseData.suggested_rule.output_quantity_factor > 1 ? ` (x${responseData.suggested_rule.output_quantity_factor})` : ''}\n\n` +
+                        `¿Quieres que aplique esta regla automáticamente en el futuro para este proveedor?`
+                    );
+
+                    if (confirmRule) {
+                        const { error: ruleError } = await supabase.from('product_learning').insert({
+                            provider_name: data.provider_name,
+                            input_pattern: responseData.suggested_rule.input_pattern,
+                            output_product_name: responseData.suggested_rule.output_product_name,
+                            output_quantity_factor: responseData.suggested_rule.output_quantity_factor,
+                            user_id: (await supabase.auth.getUser()).data.user?.id
+                        });
+
+                        if (ruleError) {
+                            console.error('Error saving rule:', ruleError);
+                            alert('Error al guardar la regla: ' + ruleError.message);
+                        } else {
+                            alert('✅ Regla Aprendida! La aplicaré automáticamente la próxima vez.');
+                        }
+                    }
+                }, 500);
+            }
+
         } catch (e: any) {
             console.error("Error adjusting invoice:", e);
             alert(`Error ajustando factura: ${e.message}`);

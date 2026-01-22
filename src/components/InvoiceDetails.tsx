@@ -1,15 +1,18 @@
-import { useEffect } from 'react';
-import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag, History, MessageSquare, ArrowRightLeft, Mic } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { cn, formatCurrency } from '../lib/utils';
+import { triggerStandardExport } from '../lib/exportUtils';
 
 interface InvoiceDetailsProps {
     result: any; // Using any to support dynamic fields
     imageSrc?: string | null;
     onClose: () => void;
     title?: string;
+    scanId?: string;
 }
 
-export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDetailsProps) {
+export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: InvoiceDetailsProps) {
     // Lock body scroll when modal is open
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -43,6 +46,64 @@ export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDeta
         order_number: Hash,
         remission_number: Receipt,
         amount_text: FileText
+    };
+
+    const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
+    const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === 'history' && scanId) {
+            setLoadingHistory(true);
+            const fetchHistory = async () => {
+                const { data } = await supabase
+                    .from('adjustment_history')
+                    .select('*')
+                    .eq('scan_id', scanId)
+                    .order('created_at', { ascending: false });
+                setHistoryLogs(data || []);
+                setLoadingHistory(false);
+            };
+            fetchHistory();
+        }
+    }, [activeTab, scanId]);
+
+    const [categories, setCategories] = useState<any[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            const { data } = await supabase.from('invoice_categories').select('*');
+            setCategories(data || []);
+        };
+        fetchCategories();
+    }, []);
+
+    // Check if provider has a category
+    useEffect(() => {
+        if (result.provider_name) {
+            const checkProvider = async () => {
+                const { data } = await supabase
+                    .from('provider_learning')
+                    .select('category_id')
+                    .eq('provider_name', result.provider_name)
+                    .single();
+                if (data) setSelectedCategory(data.category_id);
+            };
+            checkProvider();
+        }
+    }, [result.provider_name]);
+
+    const handleCategoryChange = async (categoryId: string) => {
+        setSelectedCategory(categoryId);
+        // Update learning
+        if (result.provider_name) {
+            await supabase.from('provider_learning').upsert({
+                user_id: (await supabase.auth.getUser()).data.user?.id,
+                provider_name: result.provider_name,
+                category_id: categoryId
+            }, { onConflict: 'user_id,provider_name' });
+        }
     };
 
     const fieldLabels: Record<string, string> = {
@@ -123,18 +184,72 @@ export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDeta
                                     </span>
                                 )}
                             </div>
+
+                            {/* Category Selector */}
+                            <div className="mt-4 flex items-center gap-2">
+                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Categoría:</span>
+                                <select
+                                    value={selectedCategory || ''}
+                                    onChange={async (e) => {
+                                        const val = e.target.value;
+                                        if (val === 'new') {
+                                            const name = prompt("Nombre de la nueva categoría (Ej. Licorera, Ferretería):");
+                                            if (name) {
+                                                const { data, error } = await supabase.from('invoice_categories').insert({ name }).select().single();
+                                                if (data) {
+                                                    setCategories(prev => [...prev, data]);
+                                                    handleCategoryChange(data.id);
+                                                }
+                                            }
+                                        } else {
+                                            handleCategoryChange(val);
+                                        }
+                                    }}
+                                    className="bg-black/30 text-white text-xs rounded border border-gray-700 px-2 py-1 outline-none focus:border-sikai-accent cursor-pointer"
+                                >
+                                    <option value="">Sin categoría</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                    <option value="new" className="text-sikai-accent font-bold">+ Nueva Categoría...</option>
+                                </select>
+                            </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors text-gray-400 hover:text-white"
-                        >
-                            <X size={20} />
-                        </button>
                     </div>
+                </div>
+            </button>
+        </div>
 
-                    {/* Scrollable Content - Added pb-safe or ample padding */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar bg-[#0f1218]">
+            {/* Tabs */ }
+             <div className="flex px-6 border-b border-gray-800 bg-gray-900/50 shrink-0">
+                <button
+                    onClick={() => setActiveTab('details')}
+                    className={cn(
+                        "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                        activeTab === 'details' 
+                            ? "border-sikai-accent text-sikai-accent" 
+                            : "border-transparent text-gray-400 hover:text-white"
+                    )}
+                >
+                    <FileText size={14} /> Detalles
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={cn(
+                        "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                        activeTab === 'history' 
+                            ? "border-sikai-accent text-sikai-accent" 
+                            : "border-transparent text-gray-400 hover:text-white"
+                    )}
+                >
+                    <History size={14} /> Historial de Cambios
+                </button>
+            </div>
 
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar bg-[#0f1218]">
+
+                {activeTab === 'details' ? (
+                    <>
                         {/* Totals Summary Cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="bg-sikai-accent/5 p-4 rounded-xl border border-sikai-accent/20 relative overflow-hidden group">
@@ -249,27 +364,68 @@ export function InvoiceDetails({ result, imageSrc, onClose, title }: InvoiceDeta
                                 </div>
                             </div>
                         )}
+                    </>
+                ) : (
+                    <div className="space-y-6">
+                        {loadingHistory ? (
+                            <div className="text-center py-12 text-gray-500 animate-pulse">Cargando historial...</div>
+                        ) : historyLogs.length === 0 ? (
+                            <div className="text-center py-12 text-gray-500 bg-gray-800/20 rounded-xl border border-dashed border-gray-800">
+                                <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                No hay registros de cambios por voz.
+                            </div>
+                        ) : (
+                            historyLogs.map((log) => (
+                                <div key={log.id} className="bg-gray-800/20 border border-gray-800 rounded-xl p-4">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-sikai-accent/10 flex items-center justify-center text-sikai-accent shrink-0 border border-sikai-accent/20">
+                                            <MessageSquare size={18} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="text-sm font-bold text-white">Solicitud de Cambio</h4>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(log.created_at).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="bg-black/30 p-3 rounded-lg border border-gray-800 mb-3">
+                                                <p className="text-gray-300 text-sm italic">"{log.user_prompt}"</p>
+                                            </div>
 
+                                            {/* We could show a specific diff here if we computed it */}
+                                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                <ArrowRightLeft size={12} />
+                                                <span>Cambios aplicados automáticamente por el Agente IA</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
+                )}
 
-                    {/* Footer Actions */}
-                    <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex justify-end gap-3 rounded-b-2xl">
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-2 bg-transparent hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all font-medium text-sm border border-transparent hover:border-gray-700"
-                        >
-                            Cerrar
-                        </button>
-                        <button
-                            className="px-6 py-2 bg-sikai-accent hover:bg-sikai-secondary text-black rounded-lg transition-all font-bold text-sm shadow-[0_0_15px_rgba(38,216,196,0.2)] hover:shadow-[0_0_20px_rgba(38,216,196,0.4)]"
-                            onClick={() => window.print()}
-                        >
-                            Exportar / Imprimir
-                        </button>
-                    </div>
-
-                </div>
             </div>
-        </div>
+
+    {/* Footer Actions */ }
+    <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex justify-end gap-3 rounded-b-2xl">
+        <button
+            onClick={onClose}
+            className="px-6 py-2 bg-transparent hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all font-medium text-sm border border-transparent hover:border-gray-700"
+        >
+            Cerrar
+        </button>
+        <button
+            className="px-6 py-2 bg-sikai-accent hover:bg-sikai-secondary text-black rounded-lg transition-all font-bold text-sm shadow-[0_0_15px_rgba(38,216,196,0.2)] hover:shadow-[0_0_20px_rgba(38,216,196,0.4)] flex items-center gap-2"
+            onClick={() => {
+                // Check if we have a category and custom export logic
+                // For now, simpler implementation: standard export but named nicely
+                triggerStandardExport([result], 'xlsx', `sikai_${selectedCategory ? 'smart_' : ''}${result.provider_name || 'factura'}`);
+            }}
+        >
+            <DollarSign size={16} /> Exportar Excel
+        </button>
+    </div>
+        </div >
     );
 }

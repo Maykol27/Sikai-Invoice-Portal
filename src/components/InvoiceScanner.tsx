@@ -49,7 +49,8 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
             if (error) throw error;
 
             if (data && data.result) {
-                setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'completed', result: data.result } : i));
+                const combinedResult = { ...data.result, scanId: data.scanId };
+                setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'completed', result: combinedResult } : i));
             } else {
                 throw new Error("No data returned");
             }
