@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag, History, MessageSquare, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn, formatCurrency } from '../lib/utils';
@@ -134,10 +134,119 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
         amount_text: 'Valor en Letras'
     };
 
+    // Voice & Agent Logic
+    const [isListening, setIsListening] = useState(false);
+    const [isAdjusting, setIsAdjusting] = useState(false);
+    const recognitionRef = useRef<any>(null);
+    const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // Show onboarding on first mount
+    useEffect(() => {
+        const hasSeen = localStorage.getItem('sikai_avatar_seen');
+        if (!hasSeen) {
+            setShowOnboarding(true);
+            const timer = setTimeout(() => setShowOnboarding(false), 8000);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    const handleAvatarClick = () => {
+        if (showOnboarding) {
+            setShowOnboarding(false);
+            localStorage.setItem('sikai_avatar_seen', 'true');
+        }
+        handleVoiceClick();
+    };
+
+    const handleVoiceClick = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Tu navegador no soporta comandos de voz. Intenta con Chrome.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.lang = 'es-CO';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = (event: any) => {
+            console.error("Error voz:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.onresult = async (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            console.log("Comando de voz:", transcript);
+            setIsListening(false);
+            if (transcript.trim().length > 0) {
+                await processVoiceAdjustment(transcript);
+            }
+        };
+
+        recognition.start();
+    };
+
+    const processVoiceAdjustment = async (prompt: string) => {
+        setIsAdjusting(true);
+        try {
+            const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
+                body: {
+                    currentData: result,
+                    userPrompt: prompt,
+                    scanId: scanId
+                }
+            });
+
+            if (error) throw error;
+            if (responseData?.error) throw new Error(responseData.error);
+
+            if (responseData?.result) {
+                alert("✅ Ajuste realizado con éxito. La página se recargará para mostrar los cambios.");
+                window.location.reload();
+            }
+
+        } catch (e: any) {
+            console.error("Error adjusting invoice:", e);
+            alert(`Error: ${e.message}`);
+        } finally {
+            setIsAdjusting(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-            {/* Modal Container: Used dvh for mobile address bar safety */}
-            <div className="bg-[#0f1218] w-full max-w-7xl max-h-[85dvh] md:max-h-[90vh] rounded-2xl border border-sikai-accent/20 shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in slide-in-from-bottom-10 duration-500">
+            {/* Modal Container: Fixed height for proper scrolling */}
+            <div className="bg-[#0f1218] w-full max-w-7xl h-[85vh] md:h-[90vh] rounded-2xl border border-sikai-accent/20 shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in slide-in-from-bottom-10 duration-500 relative">
+
+                {/* Sikai Agent Avatar (Floating in Modal) */}
+                <div className="absolute top-4 right-16 z-50 flex items-center gap-4">
+                    {/* Onboarding Bubble */}
+                    {showOnboarding && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700 bg-white text-black p-3 rounded-xl rounded-tr-none shadow-xl max-w-[200px] relative pointer-events-none">
+                            <p className="text-xs font-medium leading-relaxed">
+                                👋 <b>¡Hola! Soy tu Agente SIKAI.</b><br />
+                                Haz click en mí y dime qué corregir. Ej: <i>"Cambia el precio de la cerveza a 5000"</i>
+                            </p>
+                            <div className="absolute -right-2 top-4 w-4 h-4 bg-white rotate-45"></div>
+                        </div>
+                    )}
+
+                    <SikaiBrain
+                        state={isListening ? 'listening' : isAdjusting ? 'processing' : 'idle'}
+                        onClick={handleAvatarClick}
+                        className="cursor-pointer hover:scale-110 transition-transform"
+                    />
+                </div>
 
                 {/* Left Column: Image Preview (if available) - Hidden on mobile if needed */}
                 {imageSrc && (
