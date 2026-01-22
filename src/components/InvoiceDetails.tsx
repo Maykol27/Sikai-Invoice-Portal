@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag, History, MessageSquare, ArrowRightLeft, Mic } from 'lucide-react';
+import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag, History, MessageSquare, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn, formatCurrency } from '../lib/utils';
 import { triggerStandardExport } from '../lib/exportUtils';
@@ -195,7 +195,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                         if (val === 'new') {
                                             const name = prompt("Nombre de la nueva categoría (Ej. Licorera, Ferretería):");
                                             if (name) {
-                                                const { data, error } = await supabase.from('invoice_categories').insert({ name }).select().single();
+                                                const { data, error: _error } = await supabase.from('invoice_categories').insert({ name }).select().single();
                                                 if (data) {
                                                     setCategories(prev => [...prev, data]);
                                                     handleCategoryChange(data.id);
