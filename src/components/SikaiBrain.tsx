@@ -32,7 +32,7 @@ export function SikaiBrain({ state, onClick, className, size = 'md' }: SikaiBrai
                 className={cn(
                     "relative z-10 bg-[#0f1218] rounded-full border border-sikai-accent/30 shadow-[0_0_15px_rgba(38,216,196,0.3)] flex items-center justify-center transition-all duration-300 overflow-hidden",
                     sizeClasses[size],
-                    state === 'idle' && "hover:scale-110 hover:shadow-[0_0_25px_rgba(26,136,255,0.5)] animate-float",
+                    state === 'idle' && "hover:scale-110 hover:shadow-[0_0_25px_rgba(26,136,255,0.5)]",
                     state === 'processing' && "animate-spin-slow border-t-sikai-accent border-r-transparent border-b-sikai-accent border-l-transparent",
                     state === 'speaking' && "ring-2 ring-sikai-primary animate-bounce-slight"
                 )}

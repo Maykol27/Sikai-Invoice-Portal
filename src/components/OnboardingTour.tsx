@@ -53,10 +53,15 @@ export function OnboardingTour() {
             color: "text-blue-500"
         },
         {
-            icon: History,
             title: "Historial Detallado",
             description: "Consulta, filtra y exporta el registro completo de todas tus facturas digitalizadas.",
             color: "text-purple-500"
+        },
+        {
+            icon: Brain,
+            title: "Inteligencia Activa",
+            description: "Tu asistente SIKAI aprende de ti. Háblale para corregir facturas y le enseñará a la IA cómo procesarlas mejor la próxima vez.",
+            color: "text-sikai-accent"
         },
         {
             icon: CheckCircle2,
