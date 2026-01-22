@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
         const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
         if (!geminiApiKey) throw new Error('Missing Gemini API Key')
 
-        const model = 'gemini-1.5-flash' // Using 1.5 Flash for speed/cost effectiveness on text tasks
+        const model = 'gemini-1.5-flash-002' // Using 1.5 Flash 002 for stability and precision
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`
 
         const systemPrompt = `
