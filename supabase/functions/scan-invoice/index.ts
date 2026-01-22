@@ -31,6 +31,12 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Debug Logs
+    console.log("Debug: Checking Env Vars");
+    console.log("SUPABASE_URL exists:", !!supabaseUrl);
+    console.log("SUPABASE_ANON_KEY exists:", !!supabaseAnonKey);
+    console.log("Auth Header present:", !!authHeader);
+
     // Create client scoped to the user
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
@@ -40,8 +46,13 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
     if (userError || !user) {
-      console.error("Auth Error:", userError);
-      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError }), {
+      console.error("Auth Error Full Object:", JSON.stringify(userError));
+      return new Response(JSON.stringify({
+        error: 'Unauthorized',
+        details: userError,
+        debug_env_anon: !!supabaseAnonKey,
+        debug_header: !!authHeader
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
