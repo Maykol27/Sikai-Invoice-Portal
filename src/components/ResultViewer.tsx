@@ -26,6 +26,27 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
     const [isListening, setIsListening] = useState(false);
     const [isAdjusting, setIsAdjusting] = useState(false);
     const recognitionRef = useRef<any>(null);
+    const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // Show onboarding on mount check
+    useEffect(() => {
+        const hasSeen = localStorage.getItem('sikai_avatar_main_seen');
+        if (!hasSeen) {
+            // Delay slightly so it pops up after render
+            setTimeout(() => setShowOnboarding(true), 2000);
+            // Hide after 10s
+            const timer = setTimeout(() => setShowOnboarding(false), 12000);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    const handleAvatarClick = () => {
+        if (showOnboarding) {
+            setShowOnboarding(false);
+            localStorage.setItem('sikai_avatar_main_seen', 'true');
+        }
+        handleVoiceClick();
+    };
 
     const handleVoiceClick = () => {
         if (isListening) {
@@ -372,23 +393,24 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                         "p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none group relative overflow-hidden",
                                         isSelected
                                             ? "bg-sikai-accent/5 border-sikai-accent/40 shadow-[0_0_15px_rgba(38,216,196,0.05)]"
-                                            : "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                                            : "bg-white dark:bg-gray-800/30 border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                                     )}
                                 >
                                     <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2 text-gray-400 group-hover:text-sikai-accent transition-colors">
+                                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 group-hover:text-sikai-accent transition-colors">
                                             <Icon size={16} />
                                             <span className="text-xs uppercase tracking-wider font-bold opacity-80">{label}</span>
                                         </div>
                                         <div className={cn(
                                             "w-4 h-4 rounded-full border flex items-center justify-center transition-all",
-                                            isSelected ? "bg-sikai-accent border-sikai-accent scale-110" : "border-gray-600 bg-transparent"
+                                            isSelected ? "bg-sikai-accent border-sikai-accent scale-110" : "border-gray-300 dark:border-gray-600 bg-transparent"
                                         )}>
                                             {isSelected && <CheckCircle size={10} className="text-black" />}
                                         </div>
                                     </div>
                                     <div className={cn(
-                                        "text-sm font-medium text-white break-words leading-relaxed",
+                                        "text-sm font-medium break-words leading-relaxed",
+                                        "text-gray-900 dark:text-white",
                                         isMoney && "font-mono text-lg tracking-tight text-sikai-accent"
                                     )}>
                                         {isMoney
@@ -506,12 +528,26 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                     </div>
                 )}
 
-                <SikaiBrain
-                    state={isListening ? 'listening' : isAdjusting ? 'processing' : 'idle'}
-                    onClick={handleVoiceClick}
-                    className="w-20 h-20 shadow-2xl hover:scale-110 transition-transform"
-                    size="lg"
-                />
+                <div className="relative flex flex-col items-end">
+                    {/* Onboarding Bubble for Main Screen */}
+                    {showOnboarding && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700 bg-white text-black p-3 rounded-xl rounded-br-none shadow-xl max-w-[200px] mb-2 mr-4 relative pointer-events-none border border-sikai-accent text-right">
+                            <p className="text-xs font-medium leading-relaxed">
+                                👋 <b>Soy tu Asistente.</b><br />
+                                <span className="opacity-80">Si ves un error, haz click y dímelo. Aprenderé para la próxima.</span>
+                            </p>
+                            {/* Arrow pointing to brain */}
+                            <div className="absolute -bottom-2 right-4 w-4 h-4 bg-white rotate-45 border-r border-b border-sikai-accent"></div>
+                        </div>
+                    )}
+
+                    <SikaiBrain
+                        state={isListening ? 'listening' : isAdjusting ? 'processing' : 'idle'}
+                        onClick={handleAvatarClick}
+                        className="w-20 h-20 hover:scale-110 transition-transform cursor-pointer"
+                        size="lg"
+                    />
+                </div>
 
                 {isListening && <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">Escuchando...</span>}
             </div>
