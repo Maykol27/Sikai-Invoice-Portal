@@ -105,8 +105,8 @@ Deno.serve(async (req) => {
       throw new Error('Server configuration error: Missing Gemini API Key');
     }
 
-    // Use standard 'gemini-1.5-flash' which is the stable alias
-    const model = 'gemini-1.5-flash';
+    // Use standard 'gemini-2.0-flash-exp' as confirmed by model check
+    const model = 'gemini-2.0-flash-exp';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
 
     console.log(`Calling Gemini Model: ${model}`);
