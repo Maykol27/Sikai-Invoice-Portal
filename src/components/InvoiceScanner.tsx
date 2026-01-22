@@ -52,12 +52,16 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                 const combinedResult = { ...data.result, scanId: data.scanId };
                 setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'completed', result: combinedResult } : i));
             } else {
-                throw new Error("No data returned");
+                // Check if backend returned a managed error
+                const errMsg = data?.error || "No data returned";
+                console.error("Backend Error Response:", data);
+                throw new Error(errMsg);
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(`Error processing ${item.file.name}:`, error);
-            setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', errorText: 'Error al procesar' } : i));
+            const friendlyError = error.message || 'Error al procesar';
+            setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', errorText: friendlyError } : i));
         } finally {
             setProcessedCount(prev => prev + 1);
         }

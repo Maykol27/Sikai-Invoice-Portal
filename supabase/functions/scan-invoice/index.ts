@@ -45,6 +45,9 @@ Deno.serve(async (req) => {
     // 2. Verify User
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
+    // Explicit Log for Debugging
+    console.log("Auth User Result:", JSON.stringify({ userFound: !!user, error: userError }));
+
     if (userError || !user) {
       console.error("Auth Error Full Object:", JSON.stringify(userError));
       return new Response(JSON.stringify({
