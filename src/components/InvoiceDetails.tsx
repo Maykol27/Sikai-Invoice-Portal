@@ -430,6 +430,8 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                         <DollarSign size={16} /> Exportar Excel
                     </button>
                 </div>
-            </div >
-            );
+            </div>
+        </div>
+    </div >
+    );
 }
