@@ -279,31 +279,55 @@ Deno.serve(async (req) => {
     // Generic cleanup first (remove markdown code blocks)
     let cleanText = text.replace(/```json\n?|```/g, "").trim();
 
-    // Aggressive cleanup: Find the first '{' and last '}'
+    // Aggressive cleanup: Find the first '{'
     const firstBrace = cleanText.indexOf('{');
-    const lastBrace = cleanText.lastIndexOf('}');
-
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+    if (firstBrace !== -1) {
+      cleanText = cleanText.substring(firstBrace);
     } else {
-      throw new Error("No JSON braces found in response");
+      throw new Error("No JSON start found in response");
     }
 
     let parsedResult;
     try {
       parsedResult = JSON.parse(cleanText);
     } catch (e) {
-      console.log("Direct JSON parse failed, attempting regex repair...");
-      // Common AI JSON errors repair:
-      // 1. Remove trailing commas objects/arrays: , } -> } and , ] -> ]
-      cleanText = cleanText.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-      // 2. Fix unescaped quotes in values (basic attempt, risky but helpful) - skipped for now to avoid breaking valid JSON
+      console.log("Direct JSON parse failed, attempting repair for truncation...");
+
+      // 1. Remove trailing commas (common LLM error)
+      cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
+
+      // 2. Auto-close truncated JSON
+      // Basic logic: Count open/close braces and brackets, append missing ones
+      const openBraces = (cleanText.match(/{/g) || []).length;
+      const closeBraces = (cleanText.match(/}/g) || []).length;
+      const openBrackets = (cleanText.match(/\[/g) || []).length;
+      const closeBrackets = (cleanText.match(/\]/g) || []).length;
+
+      const missingBraces = openBraces - closeBraces;
+      const missingBrackets = openBrackets - closeBrackets;
+
+      if (missingBraces > 0 || missingBrackets > 0) {
+        console.log(`Repairing Truncation: Adding ${missingBrackets} ']' and ${missingBraces} '}'`);
+
+        // If ended with a comma (e.g. "... value",) remove it
+        if (cleanText.trim().endsWith(',')) {
+          cleanText = cleanText.trim().slice(0, -1);
+        }
+
+        // Append closers. Standard assumption: close arrays first, then objects.
+        let closer = "";
+        for (let i = 0; i < missingBrackets; i++) closer += "]";
+        for (let i = 0; i < missingBraces; i++) closer += "}";
+
+        cleanText += closer;
+      }
 
       try {
         parsedResult = JSON.parse(cleanText);
       } catch (innerE) {
-        console.error("Final JSON Parse Failed. Text:", cleanText.substring(0, 200) + "...");
-        throw new Error("Fallo al leer respuesta de IA (JSON inválido o truncado)");
+        console.error("Final JSON Parse Failed after repair.", innerE);
+        console.error("Attempted Text End:", cleanText.substring(cleanText.length - 200));
+        throw new Error("Fallo al leer respuesta de IA (Truncado y no reparable)");
       }
     }
 
