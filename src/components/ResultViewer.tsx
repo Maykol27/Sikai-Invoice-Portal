@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2 } from 'lucide-react';
+import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2, RotateCcw } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { SikaiBrain } from './SikaiBrain';
 import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
@@ -27,6 +27,16 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
     const [isAdjusting, setIsAdjusting] = useState(false);
     const recognitionRef = useRef<any>(null);
     const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // History for Undo
+    const [history, setHistory] = useState<any[]>([]);
+
+    const handleUndo = () => {
+        if (history.length === 0 || !onUpdate) return;
+        const previous = history[history.length - 1];
+        setHistory(prev => prev.slice(0, -1));
+        onUpdate(previous);
+    };
 
     // Show onboarding on mount check
     useEffect(() => {
@@ -105,6 +115,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
 
             if (responseData?.result) {
                 if (onUpdate) {
+                    setHistory(prev => [...prev, data]); // Save current state to history
                     onUpdate(responseData.result);
                 }
             }
@@ -255,13 +266,26 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
         <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             {/* Header Actions */}
             <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
-                <button
-                    onClick={onReset}
-                    className="text-gray-400 hover:text-white flex items-center gap-2 transition-colors hover:bg-white/5 py-2 px-4 rounded-full"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Escanear otra
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={onReset}
+                        className="text-gray-400 hover:text-white flex items-center gap-2 transition-colors hover:bg-white/5 py-2 px-4 rounded-full"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Escanear otra
+                    </button>
+
+                    {history.length > 0 && (
+                        <button
+                            onClick={handleUndo}
+                            className="text-sikai-accent hover:text-white flex items-center gap-2 transition-colors hover:bg-sikai-accent/10 py-2 px-4 rounded-full animate-in fade-in slide-in-from-left-2 border border-sikai-accent/20"
+                            title="Deshacer último cambio del Asistente"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Deshacer ({history.length})
+                        </button>
+                    )}
+                </div>
                 <div className="relative" ref={exportMenuRef}>
                     <button
                         onClick={() => setShowExportMenu(!showExportMenu)}
@@ -534,8 +558,8 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                     {showOnboarding && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-700 bg-white text-black p-3 rounded-xl rounded-br-none shadow-xl max-w-[200px] mb-2 mr-4 relative pointer-events-none border border-sikai-accent text-right">
                             <p className="text-xs font-medium leading-relaxed">
-                                👋 <b>Soy tu Asistente.</b><br />
-                                <span className="opacity-80">Si ves un error, haz click y dímelo. Aprenderé para la próxima.</span>
+                                👋 <b>¡Hola! Soy tu Agente SIKAI.</b><br />
+                                <span className="opacity-80">Haz click en mí y dime qué ajustar. Ej: <i>"Cambia el precio de la cerveza a 5000"</i></span>
                             </p>
                             {/* Arrow pointing to brain */}
                             <div className="absolute -bottom-2 right-4 w-4 h-4 bg-white rotate-45 border-r border-b border-sikai-accent"></div>
