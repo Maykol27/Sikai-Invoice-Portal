@@ -276,29 +276,34 @@ Deno.serve(async (req) => {
       throw new Error("La IA no devolvió texto.");
     }
 
-    const cleanText = text.replace(/```json\n?|```/g, "").trim(); // Generic cleanup first
+    // Generic cleanup first (remove markdown code blocks)
+    let cleanText = text.replace(/```json\n?|```/g, "").trim();
+
+    // Aggressive cleanup: Find the first '{' and last '}'
+    const firstBrace = cleanText.indexOf('{');
+    const lastBrace = cleanText.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+    } else {
+      throw new Error("No JSON braces found in response");
+    }
 
     let parsedResult;
     try {
-      // Attempt generic parse
       parsedResult = JSON.parse(cleanText);
     } catch (e) {
-      console.log("Direct JSON parse failed, attempting substring extraction...");
-      // Fallback: Extract from first '{' to last '}'
-      const firstBrace = text.indexOf('{');
-      const lastBrace = text.lastIndexOf('}');
+      console.log("Direct JSON parse failed, attempting regex repair...");
+      // Common AI JSON errors repair:
+      // 1. Remove trailing commas objects/arrays: , } -> } and , ] -> ]
+      cleanText = cleanText.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+      // 2. Fix unescaped quotes in values (basic attempt, risky but helpful) - skipped for now to avoid breaking valid JSON
 
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        const jsonSubstring = text.substring(firstBrace, lastBrace + 1);
-        try {
-          parsedResult = JSON.parse(jsonSubstring);
-        } catch (innerE) {
-          console.error("Substring JSON Parse Error. Substring:", jsonSubstring.substring(0, 200) + "...");
-          throw new Error("Fallo al leer respuesta de IA (JSON inválido o truncado)");
-        }
-      } else {
-        console.error("No JSON braces found in text:", text.substring(0, 200));
-        throw new Error("Fallo al leer respuesta de IA (No se encontró JSON)");
+      try {
+        parsedResult = JSON.parse(cleanText);
+      } catch (innerE) {
+        console.error("Final JSON Parse Failed. Text:", cleanText.substring(0, 200) + "...");
+        throw new Error("Fallo al leer respuesta de IA (JSON inválido o truncado)");
       }
     }
 
