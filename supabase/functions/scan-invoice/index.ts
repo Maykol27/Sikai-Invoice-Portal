@@ -25,8 +25,16 @@ Deno.serve(async (req) => {
 
     if (!authHeader) {
       console.error("Missing Authorization Header");
-      return new Response(JSON.stringify({ error: 'Missing Authorization Header' }), {
-        status: 401,
+      // RETURN 200 for Debugging visibility in Frontend
+      return new Response(JSON.stringify({
+        error: 'DEBUG: Missing Authorization Header',
+        debug_info: {
+          hasAuthHeader: false,
+          envUrl: !!supabaseUrl,
+          envKey: !!supabaseAnonKey
+        }
+      }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -55,13 +63,15 @@ Deno.serve(async (req) => {
 
     if (userError || !user) {
       console.error("Auth Error Full Object:", JSON.stringify(userError));
+      // RETURN 200 for Debugging visibility in Frontend
       return new Response(JSON.stringify({
-        error: 'Unauthorized',
+        error: 'DEBUG: Unauthorized User',
         details: userError,
         debug_env_anon: !!supabaseAnonKey,
-        debug_header: !!authHeader
+        debug_header_len: authHeader ? authHeader.length : 0,
+        debug_header_preview: authHeader ? authHeader.substring(0, 10) + '...' : 'none'
       }), {
-        status: 401,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
