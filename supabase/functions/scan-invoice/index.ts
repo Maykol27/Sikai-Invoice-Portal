@@ -266,13 +266,30 @@ Deno.serve(async (req) => {
       throw new Error("La IA no devolvió texto.");
     }
 
-    const cleanText = text.replace(/```json\n ?|\n ?```/g, "").trim();
+    const cleanText = text.replace(/```json\n?|```/g, "").trim(); // Generic cleanup first
+
     let parsedResult;
     try {
+      // Attempt generic parse
       parsedResult = JSON.parse(cleanText);
     } catch (e) {
-      console.error("JSON Parse Error. Clean Text:", cleanText);
-      throw new Error("Fallo al leer respuesta de IA (JSON inválido)");
+      console.log("Direct JSON parse failed, attempting substring extraction...");
+      // Fallback: Extract from first '{' to last '}'
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        const jsonSubstring = text.substring(firstBrace, lastBrace + 1);
+        try {
+          parsedResult = JSON.parse(jsonSubstring);
+        } catch (innerE) {
+          console.error("Substring JSON Parse Error. Substring:", jsonSubstring.substring(0, 200) + "...");
+          throw new Error("Fallo al leer respuesta de IA (JSON inválido o truncado)");
+        }
+      } else {
+        console.error("No JSON braces found in text:", text.substring(0, 200));
+        throw new Error("Fallo al leer respuesta de IA (No se encontró JSON)");
+      }
     }
 
     // 5.5. Apply Smart Product Rules (Phase 3)
