@@ -42,6 +42,11 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
+    // Initialize Admin Client for Check/Update Credits & AI Logging
+    // Use Service Role Key if available, otherwise fall back to Anon Key (though some admin ops might fail)
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey || supabaseAnonKey);
+
     // 2. Verify User
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
@@ -226,7 +231,11 @@ Deno.serve(async (req) => {
             }
           }
         ]
-      }]
+      }],
+      generationConfig: {
+        response_mime_type: "application/json",
+        max_output_tokens: 8192
+      }
     };
 
     const response = await fetch(url, {
