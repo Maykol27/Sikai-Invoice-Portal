@@ -70,25 +70,30 @@ Deno.serve(async (req) => {
          - Example: "The beer is a 6-pack for 47,600 total" -> You must logic: Price = 47600/6. Update Unit Price (~7933), Quantity = 6. Update Line Total.
          - Example: "Change tax to 19%" -> Recalculate tax amounts for items and total tax.
       
-      2. **Structure**: Return ONLY a JSON object with this EXACT structure:
+      3. **Structure**: Return ONLY a JSON object with this EXACT structure (Use Matrix for items to save space):
          {
-           "result": { ...modified invoice data... },
+           "result": { 
+               ... all invoice fields ...,
+               "items_matrix": [
+                  ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total]
+               ]
+           },
            "suggested_rule": {
-              "input_pattern": "string (the original text that caused the issue, e.g. 'PL' or 'Cerveza')",
-              "output_product_name": "string (the new corrected name, e.g. 'Pilsen')",
-              "output_quantity_factor": number (e.g. 6 if it was a 6-pack, otherwise 1)
+              "input_pattern": "string",
+              "output_product_name": "string",
+              "output_quantity_factor": number
            } OR null
          }
 
-      3. **Rule Detection**: If the user is renaming a product or changing its unit logic (e.g. "This comes in boxes of 24"), suggest a rule so we can do this automatically next time.
-      4. **Safety**: If the request is nonsensical, return the original JSON unmodified.
+      4. **Rule Detection**: If renaming/re-unit, suggest a rule.
+      5. **Safety**: Return original JSON if nonsensical.
     `
 
         const aiPayload = {
             contents: [{
                 parts: [
                     { text: systemPrompt },
-                    { text: `CURRENT DATA JSON:\n${JSON.stringify(currentData)}` },
+                    { text: `CURRENT DATA JSON (Convert items to matrix if needed):\n${JSON.stringify(currentData)}` }, // AI will understand standard JSON input even if asked for Matrix output
                     { text: `USER COMMAND: "${userPrompt}"` }
                 ]
             }]
@@ -110,8 +115,72 @@ Deno.serve(async (req) => {
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (!text) throw new Error('No response from AI')
 
-        const cleanText = text.replace(/```json\n ?|\n ?```/g, "").trim()
-        const parsedResponse = JSON.parse(cleanText)
+        // ROBUST JSON PARSING (Copied from scan-invoice)
+        let cleanText = text.replace(/```json\n?|```/g, "").trim();
+
+        // Find JSON start
+        const firstBrace = cleanText.indexOf('{');
+        if (firstBrace !== -1) {
+            cleanText = cleanText.substring(firstBrace);
+        }
+
+        let parsedResponse;
+        try {
+            parsedResponse = JSON.parse(cleanText);
+        } catch (e) {
+            console.log("Direct JSON parse failed, attempting repair for truncation...");
+
+            // 1. Remove trailing commas
+            cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
+
+            // 2. Auto-close truncated JSON
+            const openBraces = (cleanText.match(/{/g) || []).length;
+            const closeBraces = (cleanText.match(/}/g) || []).length;
+            const openBrackets = (cleanText.match(/\[/g) || []).length;
+            const closeBrackets = (cleanText.match(/\]/g) || []).length;
+
+            const missingBraces = openBraces - closeBraces;
+            const missingBrackets = openBrackets - closeBrackets;
+
+            if (missingBraces > 0 || missingBrackets > 0) {
+                console.log(`Repairing Truncation: Adding ${missingBrackets} ']' and ${missingBraces} '}'`);
+                if (cleanText.trim().endsWith(',')) {
+                    cleanText = cleanText.trim().slice(0, -1);
+                }
+                let closer = "";
+                for (let i = 0; i < missingBrackets; i++) closer += "]";
+                for (let i = 0; i < missingBraces; i++) closer += "}";
+                cleanText += closer;
+            }
+
+            try {
+                parsedResponse = JSON.parse(cleanText);
+            } catch (innerE) {
+                console.error("Final JSON Parse Failed.", innerE);
+                throw new Error("Fallo al leer respuesta de IA (Truncado y no reparable)");
+            }
+        }
+
+        // Handle both old format (just result) and new format (result + suggested_rule) for safety
+        const parsedResult = parsedResponse.result || parsedResponse
+
+        // EXPAND MATRIX TO OBJECTS IF NEEDED
+        if (parsedResult.items_matrix && Array.isArray(parsedResult.items_matrix)) {
+            console.log(`Expanding ${parsedResult.items_matrix.length} items from matrix (adjust-invoice)...`);
+            parsedResult.items = parsedResult.items_matrix.map((row: any[]) => {
+                return {
+                    code: row[0] || "",
+                    description: row[1] || "",
+                    quantity: Number(row[2]) || 0,
+                    unit_measure: row[3] || "",
+                    unit_price: Number(row[4]) || 0,
+                    tax_rate: row[5] || "0%",
+                    tax_amount: Number(row[6]) || 0,
+                    total: Number(row[7]) || 0
+                };
+            });
+            delete parsedResult.items_matrix;
+        }
 
         // Handle both old format (just result) and new format (result + suggested_rule) for safety
         const parsedResult = parsedResponse.result || parsedResponse
