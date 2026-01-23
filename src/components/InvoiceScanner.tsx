@@ -70,6 +70,15 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
 
         } catch (error: any) {
             console.error(`Error processing ${item.file.name}:`, error);
+
+            // Handle Auth Errors Explicitly
+            if (error.message?.includes("Refresh Token") || error.status === 401 || error.message?.includes("Unauthorized")) {
+                // Force logout via Supabase to clear stale storage
+                await supabase.auth.signOut();
+                window.location.reload(); // Hard reload to reset app state
+                return;
+            }
+
             const friendlyError = error.message || 'Error al procesar';
             setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', errorText: friendlyError } : i));
         } finally {

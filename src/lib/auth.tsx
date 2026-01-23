@@ -63,9 +63,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         initSession();
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            // Cast event to string to avoid TS error if types are outdated
+            const eventName = event as string;
+
             // If this listener fires immediately after initSession, prevent double loading flicker
             // but usually strictly needed for SIGN_IN/SIGN_OUT events
+            if (eventName === 'TOKEN_REFRESH_ERRORED') {
+                console.warn('Token refresh failed, forcing sign out');
+                await supabase.auth.signOut();
+                setSession(null);
+                setUser(null);
+                setCredits(null);
+                setLoading(false);
+                return;
+            }
+
             if (mounted) {
                 setSession(session);
                 setUser(session?.user ?? null);
