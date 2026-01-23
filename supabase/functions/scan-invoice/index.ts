@@ -170,15 +170,11 @@ Deno.serve(async (req) => {
        - city
        - phone
 
-    C. ITEMS LIST (Array):
-       - code (Make sure to populate this from the 'Código' column)
-       - description
-       - quantity (number)
-       - unit_measure
-       - unit_price (number)
-       - tax_rate (string, e.g. "19%")
-       - tax_amount (number)
-       - total (number)
+    C. ITEMS LIST (Compact Matrix Mode):
+       - To save tokens, return items ONLY as an array of arrays named "items_matrix".
+       - DO NOT use objects with keys for items.
+       - Column Order: [code, description, quantity, unit_measure, unit_price, tax_rate, tax_amount, total]
+       - If a value is missing, use null or 0.
 
     D. TOTALS:
        - subtotal
@@ -207,17 +203,9 @@ Deno.serve(async (req) => {
       "address": "string",
       "city": "string",
       "phone": "string",
-      "items": [
-        { 
-          "code": "string",
-          "description": "string", 
-          "quantity": number, 
-          "unit_measure": "string",
-          "unit_price": number, 
-          "tax_rate": "string",
-          "tax_amount": number,
-          "total": number 
-        }
+      "items_matrix": [
+         ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total],
+         ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total]
       ],
       "subtotal": number,
       "discount": number,
@@ -329,6 +317,26 @@ Deno.serve(async (req) => {
         console.error("Attempted Text End:", cleanText.substring(cleanText.length - 200));
         throw new Error("Fallo al leer respuesta de IA (Truncado y no reparable)");
       }
+    }
+
+    // EXPAND MATRIX TO OBJECTS (Optimization Reversal)
+    if (parsedResult.items_matrix && Array.isArray(parsedResult.items_matrix)) {
+      console.log(`Expanding ${parsedResult.items_matrix.length} items from matrix...`);
+      parsedResult.items = parsedResult.items_matrix.map((row: any[]) => {
+        // Schema: [code, description, quantity, unit, unit_price, tax_rate, tax_amount, total]
+        return {
+          code: row[0] || "",
+          description: row[1] || "",
+          quantity: Number(row[2]) || 0,
+          unit_measure: row[3] || "",
+          unit_price: Number(row[4]) || 0,
+          tax_rate: row[5] || "0%",
+          tax_amount: Number(row[6]) || 0,
+          total: Number(row[7]) || 0
+        };
+      });
+      // Clean up matrix
+      delete parsedResult.items_matrix;
     }
 
     // 5.5. Apply Smart Product Rules (Phase 3)
