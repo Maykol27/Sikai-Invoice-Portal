@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Calendar, DollarSign, Package, Building2, FileText, MapPin, Phone, User, CreditCard, Clock, Hash, Receipt, Briefcase, FileCheck, Tag, History, MessageSquare, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn, formatCurrency } from '../lib/utils';
 import { SikaiBrain } from './SikaiBrain';
+import { SikaiBrainChatModal } from './SikaiBrainChatModal';
 import { triggerStandardExport } from '../lib/exportUtils';
 
 interface InvoiceDetailsProps {
@@ -134,10 +135,18 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
         amount_text: 'Valor en Letras'
     };
 
+    // Chat Modal State
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMessages, setChatMessages] = useState<Array<{
+        id: string;
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+        timestamp: Date;
+        type: 'text' | 'voice';
+    }>>([]);
+
     // Voice & Agent Logic
-    const [isListening, setIsListening] = useState(false);
     const [isAdjusting, setIsAdjusting] = useState(false);
-    const recognitionRef = useRef<any>(null);
     const [showOnboarding, setShowOnboarding] = useState(false);
 
     // Show onboarding on first mount
@@ -151,54 +160,32 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
     }, []);
 
     const handleAvatarClick = () => {
+        console.log('[InvoiceDetails] Avatar clicked, opening chat modal');
         if (showOnboarding) {
             setShowOnboarding(false);
             localStorage.setItem('sikai_avatar_seen', 'true');
         }
-        handleVoiceClick();
+        // Open chat modal instead of starting voice directly
+        setIsChatOpen(true);
     };
 
-    const handleVoiceClick = () => {
-        if (isListening) {
-            recognitionRef.current?.stop();
-            setIsListening(false);
-            return;
-        }
+    // Refactored to support both text and voice
+    const processAdjustment = async (prompt: string, type: 'text' | 'voice' = 'text') => {
+        console.log('[InvoiceDetails] Processing adjustment:', { prompt, type, scanId });
 
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Tu navegador no soporta comandos de voz. Intenta con Chrome.");
-            return;
-        }
-
-        const recognition = new SpeechRecognition();
-        recognitionRef.current = recognition;
-        recognition.lang = 'es-CO';
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onerror = (event: any) => {
-            console.error("Error voz:", event.error);
-            setIsListening(false);
+        // Add user message to chat
+        const userMessage = {
+            id: Date.now().toString(),
+            role: 'user' as const,
+            content: prompt,
+            timestamp: new Date(),
+            type
         };
+        setChatMessages(prev => [...prev, userMessage]);
 
-        recognition.onresult = async (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            console.log("Comando de voz:", transcript);
-            setIsListening(false);
-            if (transcript.trim().length > 0) {
-                await processVoiceAdjustment(transcript);
-            }
-        };
-
-        recognition.start();
-    };
-
-    const processVoiceAdjustment = async (prompt: string) => {
         setIsAdjusting(true);
         try {
+            console.log('[InvoiceDetails] Calling adjust-invoice edge function');
             const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
                 body: {
                     currentData: result,
@@ -207,19 +194,47 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                 }
             });
 
-            if (error) throw error;
-            if (responseData?.error) throw new Error(responseData.error);
+            if (error) {
+                console.error('[InvoiceDetails] Supabase function error:', error);
+                throw error;
+            }
+            if (responseData?.error) {
+                console.error('[InvoiceDetails] Edge function returned error:', responseData.error);
+                throw new Error(responseData.error);
+            }
 
             if (responseData?.result) {
-                alert("✅ Ajuste realizado con éxito. La página se recargará para mostrar los cambios.");
-                window.location.reload();
+                console.log('[InvoiceDetails] Adjustment successful');
+                // Add success message to chat
+                const successMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'assistant' as const,
+                    content: '✓ Ajuste realizado con éxito. La página se recargará para mostrar los cambios.',
+                    timestamp: new Date(),
+                    type: 'text' as const
+                };
+                setChatMessages(prev => [...prev, successMessage]);
+
+                // Reload after brief delay to show success message
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             }
 
         } catch (e: any) {
-            console.error("Error adjusting invoice:", e);
-            alert(`Error: ${e.message}`);
+            console.error('[InvoiceDetails] Error adjusting invoice:', e, { prompt, type, scanId });
+            // Add error message to chat
+            const errorMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'system' as const,
+                content: `❌ Error: ${e.message}`,
+                timestamp: new Date(),
+                type: 'text' as const
+            };
+            setChatMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsAdjusting(false);
+            console.log('[InvoiceDetails] Adjustment process completed');
         }
     };
 
@@ -242,7 +257,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                     )}
 
                     <SikaiBrain
-                        state={isListening ? 'listening' : isAdjusting ? 'processing' : 'idle'}
+                        state={isAdjusting ? 'processing' : 'idle'}
                         onClick={handleAvatarClick}
                         className="cursor-pointer hover:scale-110 transition-transform"
                     />
@@ -585,6 +600,16 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                     </div>
                 </div>
             </div>
+
+            {/* Chat Modal */}
+            <SikaiBrainChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                onSendMessage={processAdjustment}
+                messages={chatMessages}
+                isProcessing={isAdjusting}
+                invoiceData={result}
+            />
         </div >
     );
 }
