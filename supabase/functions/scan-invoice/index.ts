@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       }],
       generationConfig: {
         response_mime_type: "application/json",
-        max_output_tokens: 8192
+        max_output_tokens: 32768  // Increased from 8192 to handle large PDFs
       }
     };
 
@@ -280,11 +280,41 @@ Deno.serve(async (req) => {
       parsedResult = JSON.parse(cleanText);
     } catch (e) {
       console.log("Direct JSON parse failed, attempting repair for truncation...");
+      console.log("Response length:", cleanText.length, "characters");
 
       // 1. Remove trailing commas (common LLM error)
       cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
 
-      // 2. Auto-close truncated JSON
+      // 2. Fix unclosed strings (remove incomplete trailing string)
+      // If the text ends with an incomplete string like: "field": "incomplete value
+      // We need to close it properly
+      const lastQuoteIndex = cleanText.lastIndexOf('"');
+      if (lastQuoteIndex > -1) {
+        const afterLastQuote = cleanText.substring(lastQuoteIndex + 1).trim();
+        // If there's text after the last quote that's not a valid JSON char, truncate it
+        if (afterLastQuote && !/^[\s,\]\}]*$/.test(afterLastQuote)) {
+          console.log("Removing incomplete string after last quote");
+          cleanText = cleanText.substring(0, lastQuoteIndex + 1);
+        }
+      }
+
+      // 3. Remove trailing incomplete value if it ends mid-field
+      // Pattern: ..."field": incomplete_or_truncated
+      if (cleanText.trim().match(/"\s*:\s*[^"\[\{\]\}\s,]+$/)) {
+        console.log("Removing incomplete trailing value");
+        const lastColonIndex = cleanText.lastIndexOf(':');
+        if (lastColonIndex > -1) {
+          cleanText = cleanText.substring(0, lastColonIndex + 1) + ' null';
+        }
+      }
+
+      // 4. Remove trailing comma again after cleanup
+      cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
+      if (cleanText.trim().endsWith(',')) {
+        cleanText = cleanText.trim().slice(0, -1);
+      }
+
+      // 5. Auto-close truncated JSON
       // Basic logic: Count open/close braces and brackets, append missing ones
       const openBraces = (cleanText.match(/{/g) || []).length;
       const closeBraces = (cleanText.match(/}/g) || []).length;
@@ -297,11 +327,6 @@ Deno.serve(async (req) => {
       if (missingBraces > 0 || missingBrackets > 0) {
         console.log(`Repairing Truncation: Adding ${missingBrackets} ']' and ${missingBraces} '}'`);
 
-        // If ended with a comma (e.g. "... value",) remove it
-        if (cleanText.trim().endsWith(',')) {
-          cleanText = cleanText.trim().slice(0, -1);
-        }
-
         // Append closers. Standard assumption: close arrays first, then objects.
         let closer = "";
         for (let i = 0; i < missingBrackets; i++) closer += "]";
@@ -312,10 +337,12 @@ Deno.serve(async (req) => {
 
       try {
         parsedResult = JSON.parse(cleanText);
+        console.log("✓ Successfully repaired truncated JSON");
       } catch (innerE) {
         console.error("Final JSON Parse Failed after repair.", innerE);
-        console.error("Attempted Text End:", cleanText.substring(cleanText.length - 200));
-        throw new Error("Fallo al leer respuesta de IA (Truncado y no reparable)");
+        console.error("Response stats: Length=", cleanText.length, "OpenBraces=", openBraces, "CloseBraces=", closeBraces);
+        console.error("Text preview (last 300 chars):", cleanText.substring(Math.max(0, cleanText.length - 300)));
+        throw new Error(`Fallo al procesar PDF: Documento muy extenso (${Math.round(cleanText.length / 1000)}KB de respuesta). Por favor, intente dividir el PDF en archivos más pequeños o contacte soporte.`);
       }
     }
 
