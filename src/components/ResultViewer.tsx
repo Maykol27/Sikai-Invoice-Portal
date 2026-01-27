@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2, RotateCcw } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { SikaiBrain } from './SikaiBrain';
+import { SikaiBrainChatModal } from './SikaiBrainChatModal';
 import { triggerSmartExport, triggerStandardExport } from '../lib/exportUtils';
 
 interface ResultViewerProps {
@@ -22,10 +23,18 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [customTax, setCustomTax] = useState<string>('');
 
-    // Voice State
-    const [isListening, setIsListening] = useState(false);
+    // Chat Modal State
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMessages, setChatMessages] = useState<Array<{
+        id: string;
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+        timestamp: Date;
+        type: 'text' | 'voice';
+    }>>([]);
+
+    // Voice State (kept for compatibility, but will be managed by chat)
     const [isAdjusting, setIsAdjusting] = useState(false);
-    const recognitionRef = useRef<any>(null);
     const [showOnboarding, setShowOnboarding] = useState(false);
 
     // History for Undo
@@ -55,53 +64,27 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
             setShowOnboarding(false);
             localStorage.setItem('sikai_avatar_main_seen', 'true');
         }
-        handleVoiceClick();
+        // Open chat modal instead of starting voice directly
+        setIsChatOpen(true);
     };
 
-    const handleVoiceClick = () => {
-        if (isListening) {
-            recognitionRef.current?.stop();
-            setIsListening(false);
-            return;
-        }
+    // Refactored to support both text and voice
+    const processAdjustment = async (prompt: string, type: 'text' | 'voice' = 'text') => {
+        console.log('[ResultViewer] Processing adjustment:', { prompt, type, scanId });
 
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Tu navegador no soporta comandos de voz. Intenta con Chrome.");
-            return;
-        }
-
-        const recognition = new SpeechRecognition();
-        recognitionRef.current = recognition;
-        recognition.lang = 'es-CO';
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onstart = () => setIsListening(true);
-
-        recognition.onresult = async (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            console.log("Comando de voz:", transcript);
-            setIsListening(false);
-
-            if (transcript.trim().length > 0) {
-                await processVoiceAdjustment(transcript);
-            }
+        // Add user message to chat
+        const userMessage = {
+            id: Date.now().toString(),
+            role: 'user' as const,
+            content: prompt,
+            timestamp: new Date(),
+            type
         };
+        setChatMessages(prev => [...prev, userMessage]);
 
-        recognition.onerror = (event: any) => {
-            console.error("Error voz:", event.error);
-            setIsListening(false);
-        };
-
-        recognition.onend = () => setIsListening(false);
-
-        recognition.start();
-    };
-
-    const processVoiceAdjustment = async (prompt: string) => {
         setIsAdjusting(true);
         try {
+            console.log('[ResultViewer] Calling adjust-invoice edge function');
             const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
                 body: {
                     currentData: data,
@@ -110,19 +93,40 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                 }
             });
 
-            if (error) throw error;
-            if (responseData?.error) throw new Error(responseData.error);
+            if (error) {
+                console.error('[ResultViewer] Supabase function error:', error);
+                throw error;
+            }
+            if (responseData?.error) {
+                console.error('[ResultViewer] Edge function returned error:', responseData.error);
+                throw new Error(responseData.error);
+            }
 
             if (responseData?.result) {
+                console.log('[ResultViewer] Adjustment successful, items count:', responseData.result.items?.length || 0);
                 if (onUpdate) {
                     setHistory(prev => [...prev, data]); // Save current state to history
                     onUpdate(responseData.result);
+                    console.log('[ResultViewer] Invoice data updated');
                 }
+
+                // Add success message to chat
+                const successMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'assistant' as const,
+                    content: '✓ He actualizado la factura según tu solicitud. Verifica los cambios en la vista.',
+                    timestamp: new Date(),
+                    type: 'text' as const
+                };
+                setChatMessages(prev => [...prev, successMessage]);
+                console.log('[ResultViewer] Success message added to chat');
+            } else {
+                console.warn('[ResultViewer] No result data received from edge function');
             }
 
             // Check for Smart Suggested Rules (Phase 3)
             if (responseData?.suggested_rule) {
-                // We found a pattern! Ask user if they want to teach SIKAI
+                console.log('[ResultViewer] Suggested rule detected:', responseData.suggested_rule);
                 setTimeout(async () => {
                     const confirmRule = window.confirm(
                         `🧠 SIKAI Intelligence:\n\n` +
@@ -142,9 +146,10 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                         });
 
                         if (ruleError) {
-                            console.error('Error saving rule:', ruleError);
+                            console.error('[ResultViewer] Error saving learning rule:', ruleError);
                             alert('Error al guardar la regla: ' + ruleError.message);
                         } else {
+                            console.log('[ResultViewer] Learning rule saved successfully');
                             alert('✅ Regla Aprendida! La aplicaré automáticamente la próxima vez.');
                         }
                     }
@@ -152,10 +157,19 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
             }
 
         } catch (e: any) {
-            console.error("Error adjusting invoice:", e);
-            alert(`Error ajustando factura: ${e.message}`);
+            console.error('[ResultViewer] Error adjusting invoice:', e, { prompt, type, scanId });
+            // Add error message to chat
+            const errorMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'system' as const,
+                content: `❌ Error: ${e.message}`,
+                timestamp: new Date(),
+                type: 'text' as const
+            };
+            setChatMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsAdjusting(false);
+            console.log('[ResultViewer] Adjustment process completed');
         }
     };
 
@@ -567,15 +581,24 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                     )}
 
                     <SikaiBrain
-                        state={isListening ? 'listening' : isAdjusting ? 'processing' : 'idle'}
+                        state={isAdjusting ? 'processing' : 'idle'}
                         onClick={handleAvatarClick}
                         className="w-20 h-20 hover:scale-110 transition-transform cursor-pointer"
                         size="lg"
                     />
                 </div>
 
-                {isListening && <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">Escuchando...</span>}
             </div>
+
+            {/* Chat Modal */}
+            <SikaiBrainChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                onSendMessage={processAdjustment}
+                messages={chatMessages}
+                isProcessing={isAdjusting}
+                invoiceData={data}
+            />
         </div>
     );
 }

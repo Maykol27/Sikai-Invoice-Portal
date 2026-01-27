@@ -93,10 +93,14 @@ Deno.serve(async (req) => {
             contents: [{
                 parts: [
                     { text: systemPrompt },
-                    { text: `CURRENT DATA JSON (Convert items to matrix if needed):\n${JSON.stringify(currentData)}` }, // AI will understand standard JSON input even if asked for Matrix output
+                    { text: `CURRENT DATA JSON (Convert items to matrix if needed):\n${JSON.stringify(currentData)}` },
                     { text: `USER COMMAND: "${userPrompt}"` }
                 ]
-            }]
+            }],
+            generationConfig: {
+                response_mime_type: "application/json",
+                max_output_tokens: 16384
+            }
         }
 
         const response = await fetch(url, {
@@ -129,11 +133,37 @@ Deno.serve(async (req) => {
             parsedResponse = JSON.parse(cleanText);
         } catch (e) {
             console.log("Direct JSON parse failed, attempting repair for truncation...");
+            console.log("Response length:", cleanText.length, "characters");
 
             // 1. Remove trailing commas
             cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
 
-            // 2. Auto-close truncated JSON
+            // 2. Fix unclosed strings
+            const lastQuoteIndex = cleanText.lastIndexOf('"');
+            if (lastQuoteIndex > -1) {
+                const afterLastQuote = cleanText.substring(lastQuoteIndex + 1).trim();
+                if (afterLastQuote && !/^[\s,\]\}]*$/.test(afterLastQuote)) {
+                    console.log("Removing incomplete string after last quote");
+                    cleanText = cleanText.substring(0, lastQuoteIndex + 1);
+                }
+            }
+
+            // 3. Remove trailing incomplete value
+            if (cleanText.trim().match(/"\s*:\s*[^"\[\{\]\}\s,]+$/)) {
+                console.log("Removing incomplete trailing value");
+                const lastColonIndex = cleanText.lastIndexOf(':');
+                if (lastColonIndex > -1) {
+                    cleanText = cleanText.substring(0, lastColonIndex + 1) + ' null';
+                }
+            }
+
+            // 4. Remove trailing comma again
+            cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
+            if (cleanText.trim().endsWith(',')) {
+                cleanText = cleanText.trim().slice(0, -1);
+            }
+
+            // 5. Auto-close truncated JSON
             const openBraces = (cleanText.match(/{/g) || []).length;
             const closeBraces = (cleanText.match(/}/g) || []).length;
             const openBrackets = (cleanText.match(/\[/g) || []).length;
@@ -144,9 +174,6 @@ Deno.serve(async (req) => {
 
             if (missingBraces > 0 || missingBrackets > 0) {
                 console.log(`Repairing Truncation: Adding ${missingBrackets} ']' and ${missingBraces} '}'`);
-                if (cleanText.trim().endsWith(',')) {
-                    cleanText = cleanText.trim().slice(0, -1);
-                }
                 let closer = "";
                 for (let i = 0; i < missingBrackets; i++) closer += "]";
                 for (let i = 0; i < missingBraces; i++) closer += "}";
@@ -155,14 +182,18 @@ Deno.serve(async (req) => {
 
             try {
                 parsedResponse = JSON.parse(cleanText);
+                console.log("✓ Successfully repaired truncated JSON");
             } catch (innerE) {
-                console.error("Final JSON Parse Failed.", innerE);
-                throw new Error("Fallo al leer respuesta de IA (Truncado y no reparable)");
+                console.error("Final JSON Parse Failed after repair.", innerE);
+                console.error("Response stats: Length=", cleanText.length, "OpenBraces=", openBraces, "CloseBraces=", closeBraces);
+                console.error("Text preview (last 300 chars):", cleanText.substring(Math.max(0, cleanText.length - 300)));
+                throw new Error(`Fallo al ajustar factura: Comando muy complejo (${Math.round(cleanText.length / 1000)}KB de respuesta). Intente con un comando más simple.`);
             }
         }
 
         // Handle both old format (just result) and new format (result + suggested_rule) for safety
         const parsedResult = parsedResponse.result || parsedResponse
+        const suggestedRule = parsedResponse.suggested_rule || null
 
         // EXPAND MATRIX TO OBJECTS IF NEEDED
         if (parsedResult.items_matrix && Array.isArray(parsedResult.items_matrix)) {
@@ -181,10 +212,6 @@ Deno.serve(async (req) => {
             });
             delete parsedResult.items_matrix;
         }
-
-        // Handle both old format (just result) and new format (result + suggested_rule) for safety
-        const parsedResult = parsedResponse.result || parsedResponse
-        const suggestedRule = parsedResponse.suggested_rule || null
 
         // 5. Log History (Smart Agent) - Use user-scoped client
         if (scanId) {
