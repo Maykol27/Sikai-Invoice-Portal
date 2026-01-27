@@ -187,20 +187,11 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
         try {
             console.log('[InvoiceDetails] Calling adjust-invoice edge function');
 
-            // Get current session token
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-                throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.');
-            }
-
             const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
                 body: {
                     currentData: result,
                     userPrompt: prompt,
                     scanId: scanId
-                },
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`
                 }
             });
 

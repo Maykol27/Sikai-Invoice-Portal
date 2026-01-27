@@ -38,21 +38,12 @@ export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
                 reader.readAsDataURL(item.file);
             });
 
-            // Explicitly get session to ensure token is fresh and present
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                throw new Error("No hay sesión activa. Por favor inicia sesión nuevamente.");
-            }
 
             const { data, error } = await supabase.functions.invoke('scan-invoice', {
                 body: {
                     imageBase64: base64,
                     mimeType: item.file.type,
                     name: item.file.name
-                },
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`
                 }
             });
 

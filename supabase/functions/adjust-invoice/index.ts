@@ -16,11 +16,18 @@ Deno.serve(async (req) => {
         const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
         const authHeader = req.headers.get('Authorization');
 
+        console.log('[adjust-invoice] Headers received:', {
+            hasAuth: !!authHeader,
+            authPreview: authHeader?.substring(0, 30) + '...',
+            allHeaders: Object.fromEntries(req.headers.entries())
+        });
+
         if (!supabaseUrl || !supabaseAnonKey) {
             throw new Error('Error de configuración: Faltan variables de entorno standard');
         }
 
         if (!authHeader) {
+            console.error('[adjust-invoice] NO Authorization header found!');
             return new Response(JSON.stringify({ error: 'Missing Authorization Header' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
