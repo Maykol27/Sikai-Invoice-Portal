@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
             }],
             generationConfig: {
                 response_mime_type: "application/json",
-                max_output_tokens: 16384
+                max_output_tokens: 32768  // Increased to handle complex commands with large responses
             }
         }
 

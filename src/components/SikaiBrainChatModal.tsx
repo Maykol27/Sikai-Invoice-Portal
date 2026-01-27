@@ -165,11 +165,8 @@ export function SikaiBrainChatModal({
     };
 
     if (!isOpen) {
-        console.log('[SikaiBrainChat] Modal is closed');
         return null;
     }
-
-    console.log('[SikaiBrainChat] Modal is open, messages:', messages.length);
 
     return (
         <>
