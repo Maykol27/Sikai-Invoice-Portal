@@ -104,6 +104,10 @@ Deno.serve(async (req) => {
       throw new Error('Invalid JSON body');
     }
 
+    if (body.imageBase64) {
+      console.log(`Received Payload Size: ~${Math.round(body.imageBase64.length / 1024)} KB`);
+    }
+
     const { imageBase64, mimeType, name } = body;
     if (!imageBase64) throw new Error('Image data missing');
     if (!mimeType) throw new Error('Mime type missing');
@@ -134,7 +138,8 @@ Deno.serve(async (req) => {
         }
 
         // Prioritized list of preferred models
-        const preferences = ['gemini-1.5-flash', 'gemini-1.5-flash-001', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+        // Added 'gemini-1.5-flash-8b' as top priority for speed/timeout avoidance
+        const preferences = ['gemini-1.5-flash-8b', 'gemini-1.5-flash', 'gemini-1.5-flash-001', 'gemini-1.5-pro', 'gemini-1.0-pro'];
 
         // Find the first preferred model that exists in the available list
         for (const pref of preferences) {

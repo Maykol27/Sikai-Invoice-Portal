@@ -381,6 +381,10 @@ Deno.serve(async (req) => {
         // Add index to items before filtering
         const allItems = expandMatrix(currentData).map((item, idx) => ({ ...item, _original_index: idx }));
 
+        if (allItems.length === 0) {
+            throw new Error("Esta factura parece vacía o corrupta (0 productos encontrados). Por favor intenta escanearla nuevamente.");
+        }
+
         const relevantItems = filterRelevantItems(allItems, userPrompt);
 
         // Create compact payload with filtered items
