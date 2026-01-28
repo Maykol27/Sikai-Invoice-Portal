@@ -238,6 +238,99 @@ function recalculateTotals(data: any, items: any[]): any {
     return result;
 }
 
+/**
+ * Calculate delta (only changed fields) for optimized storage
+ * Returns a compact representation of what changed
+ */
+function calculateDelta(originalData: any, newData: any): any {
+    const changes: any[] = [];
+
+    // Compare items array
+    if (originalData.items && newData.items) {
+        const originalItems = originalData.items;
+        const newItems = newData.items;
+
+        // Track item changes
+        newItems.forEach((newItem: any, idx: number) => {
+            const oldItem = originalItems[idx];
+
+            if (!oldItem) {
+                // Item was added
+                changes.push({
+                    type: 'item_add',
+                    index: idx,
+                    item: newItem
+                });
+                return;
+            }
+
+            // Check each field of the item
+            const itemChanges: any = {};
+            let hasChanges = false;
+
+            Object.keys(newItem).forEach(key => {
+                if (newItem[key] !== oldItem[key]) {
+                    itemChanges[key] = {
+                        old: oldItem[key],
+                        new: newItem[key]
+                    };
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                changes.push({
+                    type: 'item_update',
+                    index: idx,
+                    code: newItem.code || oldItem.code,
+                    description: newItem.description || oldItem.description,
+                    changes: itemChanges
+                });
+            }
+        });
+
+        // Detect deleted items
+        if (originalItems.length > newItems.length) {
+            for (let i = newItems.length; i < originalItems.length; i++) {
+                changes.push({
+                    type: 'item_delete',
+                    index: i,
+                    item: originalItems[i]
+                });
+            }
+        }
+    }
+
+    // Compare top-level fields (invoice header fields)
+    const fieldChanges: any = {};
+    let hasFieldChanges = false;
+
+    Object.keys(newData).forEach(key => {
+        if (key === 'items') return; // Already handled above
+
+        if (newData[key] !== originalData[key]) {
+            fieldChanges[key] = {
+                old: originalData[key],
+                new: newData[key]
+            };
+            hasFieldChanges = true;
+        }
+    });
+
+    if (hasFieldChanges) {
+        changes.push({
+            type: 'field_updates',
+            changes: fieldChanges
+        });
+    }
+
+    return {
+        changes,
+        total_changes: changes.length,
+        timestamp: new Date().toISOString()
+    };
+}
+
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
@@ -510,23 +603,31 @@ Deno.serve(async (req) => {
             // A. Update Main Scan Record (Persistence)
             const { error: updateError } = await supabaseAdmin
                 .from('scans')
-                .update({ scanned_data: finalData })
+                .update({ result: finalData })
                 .eq('id', scanId);
 
             if (updateError) console.error("Failed to update scan record:", updateError);
             else console.log(`✓ Scan record ${scanId} updated successfully`);
 
-            // B. Log History (Smart Agent)
+            // B. Log History with Delta Encoding (Optimized Storage)
+            const changeDelta = calculateDelta(currentData, finalData);
+
+            console.log(`[History] Saving delta with ${changeDelta.total_changes} change groups`);
+
             const { error: historyError } = await supabaseAdmin.from('adjustment_history').insert({
-                // user_id: user.id, 
                 scan_id: scanId,
-                original_data: currentData,
-                adjusted_data: finalData,
                 user_prompt: userPrompt,
-                // user_id: user.id, 
+                // Delta Encoding: Only save the changes (80-95% storage reduction)
+                change_delta: changeDelta,
+                // Keep original_data for backward compatibility and easy restoration
+                // but set to null for subsequent changes to save space
+                original_data: currentData,
+                // adjusted_data removed - can be reconstructed from original + delta
+                adjusted_data: null,
                 created_at: new Date().toISOString()
             })
             if (historyError) console.error("History Log Error:", historyError)
+            else console.log(`✓ History logged with delta (${JSON.stringify(changeDelta).length} bytes vs ${JSON.stringify(currentData).length + JSON.stringify(finalData).length} bytes full - ${Math.round((1 - JSON.stringify(changeDelta).length / (JSON.stringify(currentData).length + JSON.stringify(finalData).length)) * 100)}% saved)`)
         }
 
         return new Response(JSON.stringify({

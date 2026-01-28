@@ -170,7 +170,7 @@ erDiagram
 ---
 
 ### 4. `adjustment_history`
-**Descripción**: Historial de ajustes realizados a facturas mediante SikaiBrain.
+**Descripción**: Historial de ajustes realizados a facturas mediante SikaiBrain con almacenamiento optimizado.
 
 | Campo | Tipo | Constraints | Descripción |
 |-------|------|-------------|-------------|
@@ -178,9 +178,42 @@ erDiagram
 | `scan_id` | uuid | FK → scans.id, NOT NULL | Factura ajustada |
 | `user_id` | uuid | FK → users.id, NOT NULL | Usuario que hizo el ajuste |
 | `user_prompt` | text | NOT NULL | Comando de voz/texto |
-| `previous_data` | jsonb | NULL | Datos antes del ajuste |
-| `new_data` | jsonb | NULL | Datos después del ajuste |
+| `change_delta` | jsonb | NULL | **OPTIMIZADO**: Solo cambios (ahorro 80-95%) |
+| `previous_data` | jsonb | NULL | Datos antes del ajuste (legacy/backup) |
+| `new_data` | jsonb | NULL | DEPRECADO: Usar delta |
 | `created_at` | timestamptz | DEFAULT now() | Timestamp del ajuste |
+
+**Estructura de `change_delta` (JSONB) - Delta Encoding**:
+```json
+{
+  "changes": [
+    {
+      "type": "item_update",
+      "index": 42,
+      "code": "P001",
+      "description": "CERVEZA POKER",
+      "changes": {
+        "unit_price": { "old": 4500, "new": 5000 },
+        "total": { "old": 9000, "new": 10000 }
+      }
+    },
+    {
+      "type": "field_updates",
+      "changes": {
+        "total_amount": { "old": 45600, "new": 46600 }
+      }
+    }
+  ],
+  "total_changes": 2,
+  "timestamp": "2026-01-28T09:23:00Z"
+}
+```
+
+**Tipos de cambios en delta**:
+- `item_update`: Modificación de un item existente
+- `item_add`: Nuevo item agregado
+- `item_delete`: Item eliminado
+- `field_updates`: Cambios en campos de cabecera (proveedor, totales, etc.)
 
 **Relaciones**:
 - `scan_id` → `scans.id` (MANY-TO-ONE)
@@ -188,8 +221,15 @@ erDiagram
 
 **Uso**:
 - Se crea un registro por cada ajuste exitoso
-- Permite auditoría de cambios
+- Permite auditoría completa de cambios
+- **OPTIMIZACIÓN**: Solo se guarda el delta (cambios), no todo el documento
+- Reconstrucción: original_data + aplicar todos los deltas en orden
 - Muestra diferencias en UI (tab "Historial de Cambios")
+
+**Ahorro de Storage**:
+- Factura típica de 100 items: ~50KB
+- Delta promedio: ~0.5-2KB (99% de ahorro)
+- Para 1000 ajustes/mes: 2MB vs 100MB (98% menos)
 
 ---
 

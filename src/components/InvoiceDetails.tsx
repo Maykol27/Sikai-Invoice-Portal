@@ -512,26 +512,65 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                     </div>
                                 ) : (
                                     historyLogs.map((log) => {
-                                        // Calculate Diff on the fly
-                                        const prev = log.previous_data || {};
-                                        const curr = log.new_data || {};
-                                        const changes: { key: string, old: any, new: any }[] = [];
+                                        // Use Delta if available, else fallback to legacy diff
+                                        let changes: { key: string, old: any, new: any }[] = [];
 
-                                        // Simple 1-level diff for key fields
-                                        const keysToCheck = [
-                                            'total_amount', 'date', 'provider_name', 'invoice_number',
-                                            'subtotal', 'iva_amount', 'nit', 'payment_method'
-                                        ];
+                                        if (log.change_delta && log.change_delta.changes) {
+                                            // NEW: Use optimized delta format
+                                            log.change_delta.changes.forEach((deltaChange: any) => {
+                                                if (deltaChange.type === 'item_update') {
+                                                    // Item-level changes
+                                                    Object.entries(deltaChange.changes || {}).forEach(([field, values]: [string, any]) => {
+                                                        changes.push({
+                                                            key: `Item #${deltaChange.index + 1} - ${field}`,
+                                                            old: values.old,
+                                                            new: values.new
+                                                        });
+                                                    });
+                                                } else if (deltaChange.type === 'item_add') {
+                                                    changes.push({
+                                                        key: 'Nuevo Item',
+                                                        old: 'N/A',
+                                                        new: deltaChange.item.description
+                                                    });
+                                                } else if (deltaChange.type === 'item_delete') {
+                                                    changes.push({
+                                                        key: 'Item Eliminado',
+                                                        old: deltaChange.item.description,
+                                                        new: 'N/A'
+                                                    });
+                                                } else if (deltaChange.type === 'field_updates') {
+                                                    // Header field changes
+                                                    Object.entries(deltaChange.changes || {}).forEach(([field, values]: [string, any]) => {
+                                                        changes.push({
+                                                            key: field,
+                                                            old: values.old,
+                                                            new: values.new
+                                                        });
+                                                    });
+                                                }
+                                            });
+                                        } else {
+                                            // LEGACY: Calculate diff from full snapshots
+                                            const prev = log.previous_data || {};
+                                            const curr = log.new_data || log.adjusted_data || {};
 
-                                        keysToCheck.forEach(k => {
-                                            if (JSON.stringify(prev[k]) !== JSON.stringify(curr[k])) {
-                                                changes.push({ key: k, old: prev[k], new: curr[k] });
+                                            // Simple 1-level diff for key fields
+                                            const keysToCheck = [
+                                                'total_amount', 'date', 'provider_name', 'invoice_number',
+                                                'subtotal', 'iva_amount', 'nit', 'payment_method'
+                                            ];
+
+                                            keysToCheck.forEach(k => {
+                                                if (JSON.stringify(prev[k]) !== JSON.stringify(curr[k])) {
+                                                    changes.push({ key: k, old: prev[k], new: curr[k] });
+                                                }
+                                            });
+
+                                            // Check items length change
+                                            if (prev.items?.length !== curr.items?.length) {
+                                                changes.push({ key: 'items', old: `${prev.items?.length || 0} items`, new: `${curr.items?.length || 0} items` });
                                             }
-                                        });
-
-                                        // Check items length change
-                                        if (prev.items?.length !== curr.items?.length) {
-                                            changes.push({ key: 'items', old: `${prev.items?.length || 0} items`, new: `${curr.items?.length || 0} items` });
                                         }
 
                                         return (
@@ -554,20 +593,30 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                                         {/* Diff Visualization */}
                                                         <div className="space-y-1">
                                                             {changes.length > 0 ? (
-                                                                changes.map((change, idx) => (
-                                                                    <div key={idx} className="flex items-center gap-2 text-xs">
-                                                                        <span className="text-gray-500 uppercase font-bold w-20 truncate" title={change.key}>
-                                                                            {fieldLabels[change.key] || change.key}
-                                                                        </span>
-                                                                        <span className="text-red-400 line-through">
-                                                                            {String(change.old || 'Vacío')}
-                                                                        </span>
-                                                                        <ArrowRightLeft size={10} className="text-gray-600" />
-                                                                        <span className="text-sikai-accent font-mono font-medium">
-                                                                            {String(change.new)}
-                                                                        </span>
+                                                                <>
+                                                                    <div className="text-xs text-gray-500 mb-2">
+                                                                        {log.change_delta ? '✨ Cambios (Delta Optimizado)' : 'Cambios detectados'}:
                                                                     </div>
-                                                                ))
+                                                                    {changes.slice(0, 10).map((change, idx) => (
+                                                                        <div key={idx} className="flex items-center gap-2 text-xs">
+                                                                            <span className="text-gray-500 uppercase font-bold w-32 truncate" title={change.key}>
+                                                                                {fieldLabels[change.key] || change.key}
+                                                                            </span>
+                                                                            <span className="text-red-400 line-through">
+                                                                                {String(change.old || 'Vacío')}
+                                                                            </span>
+                                                                            <ArrowRightLeft size={10} className="text-gray-600" />
+                                                                            <span className="text-sikai-accent font-mono font-medium">
+                                                                                {String(change.new)}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                    {changes.length > 10 && (
+                                                                        <div className="text-xs text-gray-500 italic mt-1">
+                                                                            +{changes.length - 10} cambios más...
+                                                                        </div>
+                                                                    )}
+                                                                </>
                                                             ) : (
                                                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                                                     <ArrowRightLeft size={12} />
