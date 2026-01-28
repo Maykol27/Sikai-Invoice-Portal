@@ -15,6 +15,12 @@ interface InvoiceDetailsProps {
 }
 
 export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: InvoiceDetailsProps) {
+    const [invoiceData, setInvoiceData] = useState(result);
+
+    // Sync state if prop changes
+    useEffect(() => {
+        setInvoiceData(result);
+    }, [result]);
     // Lock body scroll when modal is open
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -83,26 +89,26 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
 
     // Check if provider has a category
     useEffect(() => {
-        if (result.provider_name) {
+        if (invoiceData.provider_name) {
             const checkProvider = async () => {
                 const { data } = await supabase
                     .from('provider_learning')
                     .select('category_id')
-                    .eq('provider_name', result.provider_name)
+                    .eq('provider_name', invoiceData.provider_name)
                     .maybeSingle();
                 if (data) setSelectedCategory(data.category_id);
             };
             checkProvider();
         }
-    }, [result.provider_name]);
+    }, [invoiceData.provider_name]);
 
     const handleCategoryChange = async (categoryId: string) => {
         setSelectedCategory(categoryId);
         // Update learning
-        if (result.provider_name) {
+        if (invoiceData.provider_name) {
             await supabase.from('provider_learning').upsert({
                 user_id: (await supabase.auth.getUser()).data.user?.id,
-                provider_name: result.provider_name,
+                provider_name: invoiceData.provider_name,
                 category_id: categoryId
             }, { onConflict: 'user_id,provider_name' });
         }
@@ -189,7 +195,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
 
             const { data: responseData, error } = await supabase.functions.invoke('adjust-invoice', {
                 body: {
-                    currentData: result,
+                    currentData: invoiceData,
                     userPrompt: prompt,
                     scanId: scanId
                 }
@@ -206,20 +212,20 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
 
             if (responseData?.result) {
                 console.log('[InvoiceDetails] Adjustment successful');
+                console.log('[InvoiceDetails] Received items (First 5):', responseData.result.items?.slice(0, 5));
+
+                // Update local state IMMEDIATELY
+                setInvoiceData(responseData.result);
+
                 // Add success message to chat
                 const successMessage = {
                     id: (Date.now() + 1).toString(),
                     role: 'assistant' as const,
-                    content: '✓ Ajuste realizado con éxito. La página se recargará para mostrar los cambios.',
+                    content: '✓ Ajuste aplicado. Puedes ver los cambios reflejados en la factura.',
                     timestamp: new Date(),
                     type: 'text' as const
                 };
                 setChatMessages(prev => [...prev, successMessage]);
-
-                // Reload after brief delay to show success message
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
             }
 
         } catch (e: any) {
@@ -297,16 +303,16 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                         {result.nit}
                                     </span>
                                 )}
-                                {result.date && (
+                                {invoiceData.date && (
                                     <span className="flex items-center gap-1.5">
                                         <Calendar size={13} className="text-gray-500" />
-                                        {result.date}
+                                        {invoiceData.date}
                                     </span>
                                 )}
-                                {result.invoice_number && (
+                                {invoiceData.invoice_number && (
                                     <span className="flex items-center gap-1.5">
                                         <FileText size={13} className="text-gray-500" />
-                                        Factura #: <span className="text-gray-300">{result.invoice_number}</span>
+                                        Factura #: <span className="text-gray-300">{invoiceData.invoice_number}</span>
                                     </span>
                                 )}
                             </div>
@@ -388,21 +394,21 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                         </div>
                                         <div className="text-sikai-accent text-xs uppercase tracking-wider font-bold mb-1">Total Operación</div>
                                         <div className="text-2xl font-bold text-white tracking-tight">
-                                            {result.total_amount ? formatCurrency(result.total_amount) : '$ 0'}
+                                            {invoiceData.total_amount ? formatCurrency(result.total_amount) : '$ 0'}
                                         </div>
                                     </div>
 
                                     <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 relative overflow-hidden">
                                         <div className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Total IVA</div>
                                         <div className="text-xl font-semibold text-gray-200">
-                                            {result.total_iva || result.iva_amount ? formatCurrency(result.total_iva || result.iva_amount) : '$ 0'}
+                                            {invoiceData.total_iva || result.iva_amount ? formatCurrency(result.total_iva || result.iva_amount) : '$ 0'}
                                         </div>
                                     </div>
 
                                     <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 relative overflow-hidden">
                                         <div className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Subtotal</div>
                                         <div className="text-xl font-semibold text-gray-200">
-                                            {result.subtotal ? formatCurrency(result.subtotal) : '$ 0'}
+                                            {invoiceData.subtotal ? formatCurrency(result.subtotal) : '$ 0'}
                                         </div>
                                     </div>
                                 </div>
@@ -435,10 +441,10 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                 </div>
 
                                 {/* Items Table */}
-                                {result.items && Array.isArray(result.items) && result.items.length > 0 && (
+                                {invoiceData.items && Array.isArray(invoiceData.items) && invoiceData.items.length > 0 && (
                                     <div>
                                         <h3 className="text-white font-bold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider text-gray-500">
-                                            <Package size={16} /> Productos ({result.items.length})
+                                            <Package size={16} /> Productos ({invoiceData.items.length})
                                         </h3>
 
                                         <div className="bg-gray-800/20 rounded-xl overflow-hidden border border-gray-800">
@@ -455,7 +461,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-800/50">
-                                                        {result.items.map((item: any, idx: number) => (
+                                                        {invoiceData.items.map((item: any, idx: number) => (
                                                             <tr key={idx} className="hover:bg-white/5 transition-colors group text-sm">
                                                                 <td className="p-3 pl-4 text-sikai-accent font-mono text-xs">{item.code || '-'}</td>
                                                                 <td className="p-3 text-gray-300 font-medium">{item.description}</td>
@@ -479,7 +485,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                                 )}
 
                                 {/* Raw Data Section */}
-                                {result.raw_data && Object.keys(result.raw_data).length > 0 && (
+                                {invoiceData.raw_data && Object.keys(result.raw_data).length > 0 && (
                                     <div>
                                         <h3 className="text-yellow-500/80 font-bold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                                             <Hash size={16} /> Datos Extra
@@ -593,7 +599,7 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                             onClick={() => {
                                 // Check if we have a category and custom export logic
                                 // For now, simpler implementation: standard export but named nicely
-                                triggerStandardExport([result], 'xlsx', `sikai_${selectedCategory ? 'smart_' : ''}${result.provider_name || 'factura'}`);
+                                triggerStandardExport([result], 'xlsx', `sikai_${selectedCategory ? 'smart_' : ''}${invoiceData.provider_name || 'factura'}`);
                             }}
                         >
                             <DollarSign size={16} /> Exportar Excel

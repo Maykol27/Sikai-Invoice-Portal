@@ -120,9 +120,51 @@ Deno.serve(async (req) => {
       throw new Error('Server configuration error: Missing Gemini API Key');
     }
 
-    // Use standard 'gemini-2.0-flash-exp' as confirmed by model check
-    const model = 'gemini-2.0-flash-exp';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+    // DYNAMIC MODEL SELECTION
+    // Instead of hardcoding, we ask Google what's available to avoid 404s
+    async function getBestModel(apiKey: string): Promise<string> {
+      try {
+        console.log("Fetching available Gemini models...");
+        const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
+        const listData = await listResponse.json();
+
+        if (!listData.models) {
+          console.warn("Could not list models, defaulting to gemini-1.5-flash");
+          return 'gemini-1.5-flash';
+        }
+
+        // Prioritized list of preferred models
+        const preferences = ['gemini-1.5-flash', 'gemini-1.5-flash-001', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+
+        // Find the first preferred model that exists in the available list
+        for (const pref of preferences) {
+          const found = listData.models.find((m: any) => m.name.endsWith(`/${pref}`) && m.supportedGenerationMethods?.includes('generateContent'));
+          if (found) {
+            console.log(`Selected Dynamic Model: ${found.name}`);
+            return found.name.split('/').pop()!; // Return just the model name part
+          }
+        }
+
+        // Fallback: Pick first available 'generateContent' model
+        const fallback = listData.models.find((m: any) => m.supportedGenerationMethods?.includes('generateContent'));
+        if (fallback) {
+          console.log(`Fallback Model Selected: ${fallback.name}`);
+          return fallback.name.split('/').pop()!;
+        }
+
+        return 'gemini-1.5-flash'; // Hard fallback
+      } catch (err) {
+        console.error("Error fetching models:", err);
+        return 'gemini-1.5-flash';
+      }
+    }
+
+    const model = await getBestModel(geminiApiKey);
+    // Use v1beta endpoint if possible as it supports more features, but stick to v1 for stability requested by user
+    // Actually, dynamic model usually implies checking the endpoint too, but let's stick to v1 structure for the URL for now
+    // NOTE: Some models are only on v1beta. If v1 fails to list them, we might need v1beta for listing.
+    // Let's try v1 first as intended.
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`;
 
     console.log(`Calling Gemini Model: ${model}`);
 
@@ -231,8 +273,8 @@ Deno.serve(async (req) => {
         ]
       }],
       generationConfig: {
-        response_mime_type: "application/json",
-        max_output_tokens: 32768  // Increased from 8192 to handle large PDFs
+        maxOutputTokens: 65536, // 1.5 Flash supports higher output
+        temperature: 0.1 // Lower temp for more precision
       }
     };
 

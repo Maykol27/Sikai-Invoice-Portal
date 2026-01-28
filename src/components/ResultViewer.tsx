@@ -104,11 +104,27 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
             }
 
             if (responseData?.result) {
-                console.log('[ResultViewer] Adjustment successful, items count:', responseData.result.items?.length || 0);
+                console.log('[ResultViewer] Adjustment successful');
+                console.log('[ResultViewer] Received items count:', responseData.result.items?.length);
+                console.log('[ResultViewer] Received items (First 3):', responseData.result.items?.slice(0, 3));
+
                 if (onUpdate) {
                     setHistory(prev => [...prev, data]); // Save current state to history
                     onUpdate(responseData.result);
                     console.log('[ResultViewer] Invoice data updated');
+                }
+
+                // Check for Partition/Partial Meta
+                if (responseData.meta && responseData.meta.is_partial) {
+                    console.warn('[ResultViewer] PARTIAL UPDATE:', responseData.meta);
+                    const partialMsg = {
+                        id: (Date.now() + 2).toString(),
+                        role: 'assistant' as const,
+                        content: `⚠️ Atención: Para proteger la estabilidad del sistema, he procesado ${responseData.meta.processed_items} items de ${responseData.meta.total_items}. Si necesitas cambiar el resto, por favor sé más específico con los productos restantes.`,
+                        timestamp: new Date(),
+                        type: 'text' as const
+                    };
+                    setChatMessages(prev => [...prev, partialMsg]);
                 }
 
                 // Add success message to chat
