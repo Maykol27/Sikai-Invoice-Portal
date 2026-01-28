@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { jsonrepair } from 'https://esm.sh/jsonrepair?no-check'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -494,43 +495,41 @@ Deno.serve(async (req) => {
         let cleanText = rawText.replace(/```json\n?|\n?```/g, "").trim();
 
         try {
+            // PRIMER INTENTO: Parseo estándar rápido
+            // Limpiar trailing commas comunes primero con regex simple por eficiencia
+            cleanText = cleanText.replace(/,(\s*[\]}])/g, '$1');
             parsedResponse = JSON.parse(cleanText);
         } catch (e) {
-            console.error("Initial JSON Parse Failed. Attempting repair...");
-
-            // Try to repair truncated JSON (Add missing braces/brackets)
-            const openBraces = (cleanText.match(/\{/g) || []).length;
-            const closeBraces = (cleanText.match(/\}/g) || []).length;
-            const openBrackets = (cleanText.match(/\[/g) || []).length;
-            const closeBrackets = (cleanText.match(/\]/g) || []).length;
-
-            const missingBraces = openBraces - closeBraces;
-            const missingBrackets = openBrackets - closeBrackets;
-
-            if (missingBraces > 0 || missingBrackets > 0) {
-                console.log(`Repairing Truncation: Adding ${missingBrackets} ']' and ${missingBraces} '}'`);
-                let closer = "";
-                for (let i = 0; i < missingBrackets; i++) closer += "]";
-                for (let i = 0; i < missingBraces; i++) closer += "}";
-                cleanText += closer;
-            }
-
-            // Fallback to original robust parsing logic if initial repair fails or is not applicable
-            // Find JSON start
-            const firstBrace = cleanText.indexOf('{');
-            if (firstBrace !== -1) {
-                cleanText = cleanText.substring(firstBrace);
-            }
-
+            console.warn("Standard JSON Parse Failed. Attempting robust repair with jsonrepair...");
             try {
-                parsedResponse = JSON.parse(cleanText);
-                console.log("✓ Successfully repaired truncated JSON");
-            } catch (innerE) {
-                console.error("Final JSON Parse Failed after repair.", innerE);
-                console.error("Response stats: Length=", cleanText.length, "OpenBraces=", openBraces, "CloseBraces=", closeBraces);
+                // SEGUNDO INTENTO: Usar librería robusta jsonrepair
+                // Esto maneja trailing commas, missing quotes, brackets desbalanceados, etc.
+                parsedResponse = JSON.parse(jsonrepair(cleanText));
+                console.log("✓ Successfully repaired JSON with jsonrepair");
+            } catch (repairError) {
+                console.error("Critical: jsonrepair failed.", repairError);
                 console.error("Text preview (first 500 chars):", cleanText.substring(0, 500));
-                console.error("Text preview (last 500 chars):", cleanText.substring(Math.max(0, cleanText.length - 500)));
-                throw new Error(`JSON Parse Error: ${innerE.message}. Response too large or malformed.`);
+
+                // ÚLTIMO RECURSO: Intentar cerrar estructuras truncadas manualmente si jsonrepair falló por eso
+                // (jsonrepair a veces no maneja bien cortes abruptos al final)
+                try {
+                    const openBraces = (cleanText.match(/\{/g) || []).length;
+                    const closeBraces = (cleanText.match(/\}/g) || []).length;
+                    const openBrackets = (cleanText.match(/\[/g) || []).length;
+                    const closeBrackets = (cleanText.match(/\]/g) || []).length;
+
+                    if (openBraces > closeBraces || openBrackets > closeBrackets) {
+                        let closer = "";
+                        for (let i = 0; i < (openBrackets - closeBrackets); i++) closer += "]";
+                        for (let i = 0; i < (openBraces - closeBraces); i++) closer += "}";
+                        console.log("Attempting manual closure:", closer);
+                        parsedResponse = JSON.parse(jsonrepair(cleanText + closer));
+                    } else {
+                        throw repairError;
+                    }
+                } catch (finalError) {
+                    throw new Error(`JSON Parse Error: ${finalError.message}. Response malformed.`);
+                }
             }
         }
 
