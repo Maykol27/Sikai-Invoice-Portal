@@ -459,13 +459,21 @@ Deno.serve(async (req) => {
                 parts: [
                     { text: systemPrompt },
                     { text: `CURRENT DATA JSON (filtered to relevant items):\n${JSON.stringify(compactData)}` },
-                    { text: `USER COMMAND: "${userPrompt}"` }
+                    { text: `USER COMMAND: "${userPrompt}" }` }
                 ]
             }],
             generationConfig: {
-                maxOutputTokens: 8192
-            }
-        }
+                maxOutputTokens: 8192,
+                temperature: 0.1,
+            },
+            safetySettings: [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+        };
+
 
         const response = await fetch(url, {
             method: 'POST',
@@ -578,13 +586,11 @@ Deno.serve(async (req) => {
         // Initialize Admin Client for DB Updates (Bypass RLS if needed for updates)
         const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey || supabaseAnonKey);
-
         // SAFETY: If no modification applied, do NOT update DB with potentially corrupt data
         if (!modificationApplied) {
             console.warn("No valid modifications applied. Returning original data.");
-            // We can return the suggested rule if any, but ensure finalData is valid
-            // Ideally we should inform user AI failed
-            throw new Error("La IA no devolvió un formato válido de productos. No se realizaron cambios para proteger los datos.");
+            const snippet = rawText ? rawText.substring(0, 300).replace(/\n/g, ' ') : "Empty response";
+            throw new Error(`La IA no devolvió un formato válido. Respuesta (Debug): ${snippet}`);
         }
 
         // CLEANUP: Ensure we don't return matrix or internal fields to frontend/DB
