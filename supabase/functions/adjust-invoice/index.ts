@@ -432,36 +432,21 @@ Deno.serve(async (req) => {
       You are an EXPERT ACCOUNTING AI for SIKAI CX.
       Your goal is to MODIFY the provided JSON invoice data based on the User's Voice Command.
 
-      CRITICAL INSTRUCTIONS:
-      1. **Calculations**: You MUST perform mathematical calculations if implied. 
-         - Example: "The beer is a 6-pack for 47,600 total" -> You must logic: Price = 47600/6. Update Unit Price (~7933), Quantity = 6. Update Line Total.
-         - Example: "Change tax to 19%" -> Recalculate tax amounts for items and total tax.
-      
-      2. **MANDATORY COMPACT FORMAT**: You MUST use items_matrix format (NOT items array) to minimize response size:
-         - BAD (Verbose): "items": [{"code": "...", "description": "...", ...}]
-         - GOOD (Compact): "items_matrix": [["code", "desc", qty, "unit", price, "tax", tax_amt, total, index]]
-         - Each item is an array of 9 values: [code, description, quantity, unit, unit_price, tax_rate, tax_amount, total, original_index]
-         - **CRITICAL**: You MUST PRESERVE the 9th column (original_index) exactly as received. This is used to merge changes back.
-      
-      3. **Structure**: Return ONLY a JSON object with this EXACT structure:
-         {
-           "result": { 
-               ... all invoice fields (supplier, totals, etc) ...,
-               "items_matrix": [
-                  ["code1", "description1", qty1, "unit1", price1, "19%", tax1, total1, 0],
-                  ["code2", "description2", qty2, "unit2", price2, "19%", tax2, total2, 45]
-               ]
-           },
-           "suggested_rule": {
-              "input_pattern": "string",
-              "output_product_name": "string",
-              "output_quantity_factor": number
-           } OR null
-         }
+      CRITICAL FORMAT INSTRUCTIONS:
+      1. **OUTPUT FORMAT**: You must return a JSON object with a "result" key.
+      2. **ITEMS REPRESENTATION**: Inside "result", you MUST use "items_matrix" (Array of Arrays) for the items.
+         - DO NOT return "items" as an array of objects.
+         - Structure: [code, description, quantity, unit, unit_price, 'tax_rate', tax_amount, total, original_index]
+         - **CRITICAL**: The 9th column (original_index) MUST be preserved from input.
 
-      4. **Rule Detection**: If renaming/re-unit, suggest a rule.
-      5. **Safety**: Return original JSON if nonsensical.
-      6. **NO EXPLANATIONS**: Return ONLY the JSON object, no markdown, no text before or after.
+      EXAMPLE ONE-SHOT:
+      Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
+      User Command: "Change beer price to 2000"
+      Output Matrix: [["A1", "Beer", 10, "und", 2000, "19%", 3800, 23800, 42]]
+
+      3. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
+      4. **Safety**: Return original JSON if command is nonsensical.
+      5. **NO EXPLANATIONS**: Return ONLY valid JSON.
     `
 
         const aiPayload = {
@@ -567,16 +552,20 @@ Deno.serve(async (req) => {
             modificationApplied = true;
 
         } else if (parsedResult.items && Array.isArray(parsedResult.items) && parsedResult.items.length > 0) {
-            // FALLBACK: AI returned 'items' array instead of matrix (rare but possible)
-            console.warn("AI returned 'items' array instead of 'items_matrix'. Using fallback merge.");
-            // Assume these are the ONLY items or modified items? 
-            // Risky if we filtered before. 
-            // If we filtered, 'items' might be just the subset.
-            // Let's assume they are modifications and try to merge by code?
-            // Or just fail safely?
-            // Safer to FAIL safely than corrupt data with a partial list.
-            console.error("Safety Stop: AI returned 'items' array but we used filtering. Cannot safely merge without index.");
-            // modificationApplied = false; -> Will trigger safety error below
+            // FALLBACK: AI returned 'items' array instead of matrix.
+            console.warn("AI returned 'items' array instead of 'items_matrix'. Using smart fallback merge.");
+
+            // We use the same items as modified items. 
+            // mergeModifiedItems has built-in logic to match by Code/Description if _original_index is missing.
+            const modifiedItems = parsedResult.items;
+
+            console.log(`Attempting to merge ${modifiedItems.length} items using heuristic matching...`);
+            const mergedItems = mergeModifiedItems(allItems, modifiedItems);
+
+            // Recalculate and proceed
+            finalData = recalculateTotals(currentData, mergedItems);
+            modificationApplied = true;
+
         } else {
             console.error("AI Response Missing 'items_matrix'. Result Keys:", Object.keys(parsedResult));
         }
