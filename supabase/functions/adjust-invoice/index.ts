@@ -446,7 +446,8 @@ Deno.serve(async (req) => {
 
       3. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
       4. **Safety**: Return original JSON if command is nonsensical.
-      5. **NO EXPLANATIONS**: Return ONLY valid JSON.
+      5. **PRESERVATION**: If the user ONLY asks to rename an item, DO NOT change its price, quantity, or tax. Copy the original values EXACTLY. Only recalculate if the user implies a value change.
+      6. **NO EXPLANATIONS**: Return ONLY valid JSON.
     `
 
         const aiPayload = {
