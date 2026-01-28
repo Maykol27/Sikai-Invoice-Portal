@@ -41,7 +41,15 @@ function isGlobalCommand(prompt: string): boolean {
  * Filter items relevant to the user command
  */
 function filterRelevantItems(items: any[], userPrompt: string): any[] {
-    // Always process if <= 100 items (small invoice)
+    // BYPASS FILTERING FOR STANDARD INVOICES (< 2000 items)
+    // Gemini 1.5 Flash (1M tokens) can handle this easily.
+    // This allows "bulk updates" (e.g. "delete all") to work on the entire invoice.
+    if (items.length < 2000) {
+        console.log(`[Filter] Standard invoice (${items.length} items < 2000), sending ALL to AI.`);
+        return items;
+    }
+
+    // Always process if <= 100 items (small invoice) - Redundant with above but kept for logic safety
     if (items.length <= 100) {
         console.log(`[Filter] Small invoice (${items.length} items), processing all`);
         return items;
