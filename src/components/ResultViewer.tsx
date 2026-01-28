@@ -299,6 +299,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
             <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
                 <div className="flex items-center gap-2">
                     <button
+                        type="button"
                         onClick={onReset}
                         className="text-gray-400 hover:text-white flex items-center gap-2 transition-colors hover:bg-white/5 py-2 px-4 rounded-full"
                     >
@@ -308,6 +309,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
 
                     {history.length > 0 && (
                         <button
+                            type="button"
                             onClick={handleUndo}
                             className="text-sikai-accent hover:text-white flex items-center gap-2 transition-colors hover:bg-sikai-accent/10 py-2 px-4 rounded-full animate-in fade-in slide-in-from-left-2 border border-sikai-accent/20"
                             title="Deshacer último cambio del Asistente"
@@ -319,6 +321,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                 </div>
                 <div className="relative" ref={exportMenuRef}>
                     <button
+                        type="button"
                         onClick={() => setShowExportMenu(!showExportMenu)}
                         className="bg-sikai-accent hover:bg-sikai-secondary text-black font-bold px-6 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-sikai-accent/20"
                     >
@@ -356,6 +359,8 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                             <div className="px-4 py-2">
                                 <label className="text-xs text-gray-400 block mb-1">Impuesto por Producto</label>
                                 <input
+                                    id="custom-tax-input"
+                                    name="customTax"
                                     type="number"
                                     placeholder="Ej. 19"
                                     className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:border-sikai-accent outline-none placeholder:text-gray-600"
@@ -379,6 +384,8 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                         </div>
                     )}
                     <input
+                        id="smart-export-file"
+                        name="smartExportFile"
                         type="file"
                         ref={fileInputRef}
                         onChange={handleSmartExport}

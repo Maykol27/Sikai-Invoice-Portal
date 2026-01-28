@@ -201,6 +201,7 @@ export function SikaiBrainChatModal({
                         </div>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
                     >
@@ -308,6 +309,7 @@ export function SikaiBrainChatModal({
 
                         {/* Voice Button */}
                         <button
+                            type="button"
                             onClick={handleVoiceClick}
                             disabled={isProcessing}
                             className={cn(
@@ -324,6 +326,7 @@ export function SikaiBrainChatModal({
 
                         {/* Send Button */}
                         <button
+                            type="button"
                             onClick={handleSendText}
                             disabled={!inputValue.trim() || isProcessing}
                             className={cn(
