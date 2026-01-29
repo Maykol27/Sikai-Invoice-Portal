@@ -719,7 +719,11 @@ Deno.serve(async (req) => {
             meta: {
                 total_items: allItems.length,
                 processed_items: relevantItems.length,
-                is_partial: relevantItems.length < allItems.length
+                is_partial: relevantItems.length < allItems.length,
+                // DEBUG INFO
+                ai_returned_count: parsedResult.items_matrix?.length || parsedResult.items?.length || 0,
+                final_items_count: finalData.items?.length || 0,
+                debug_timestamp: new Date().toISOString()
             }
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
