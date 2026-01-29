@@ -140,6 +140,10 @@ function mergeModifiedItems(originalItems: any[], modifiedItems: any[]): any[] {
     let matchedCount = 0;
     let fallbackCount = 0;
     let addedCount = 0;
+    let collisionCount = 0;
+
+    // Track which indices in the ORIGINAL array have been updated in this pass
+    const processedIndices = new Set<number>();
 
     modifiedItems.forEach(modItem => {
         // Try to match by index first (most reliable)
@@ -154,15 +158,15 @@ function mergeModifiedItems(originalItems: any[], modifiedItems: any[]): any[] {
             const targetCode = (modItem.code || '').toLowerCase().trim();
             const targetDesc = (modItem.description || '').toLowerCase().trim();
 
-            // Search in originalItems (using index to ensure we edit the RESULT array correctly)
+            // Search in originalItems matching index
             const matchIdx = originalItems.findIndex((orig, i) => {
                 const origCode = (orig.code || '').toLowerCase().trim();
                 const origDesc = (orig.description || '').toLowerCase().trim();
 
-                // If code exists, must match code. If description exists, must match description partial or full.
                 if (targetCode && origCode === targetCode) return true;
                 if (!targetCode && targetDesc && origDesc === targetDesc) return true;
-                if (targetCode && targetDesc && origDesc === targetDesc) return true;
+                // Strict match if both exist
+                if (targetCode && targetDesc && origCode === targetCode && origDesc === targetDesc) return true;
 
                 return false;
             });
@@ -170,30 +174,39 @@ function mergeModifiedItems(originalItems: any[], modifiedItems: any[]): any[] {
             if (matchIdx !== -1) {
                 foundIndex = matchIdx;
                 fallbackCount++;
-                console.log(`[Merge] Fallback match found for "${targetDesc}" at index ${matchIdx}`);
+                // Log debug only if needed
+                // console.log(`[Merge] Fallback match found for "${targetDesc}" at index ${matchIdx}`);
             }
         }
 
+        // CRITICAL FIX: COLLISION DETECTION
+        // If we found an index, but we ALREADY updated this index in this batch, 
+        // it means the AI returned duplicate rows pointing to the same original item.
+        // We MUST treat the duplicates as NEW items to avoid overwriting.
+        if (foundIndex !== -1 && processedIndices.has(foundIndex)) {
+            console.warn(`[Merge] Collision detected at index ${foundIndex}. AI likely cloned the item with original ID. Treating clone as NEW item.`);
+            foundIndex = -1; // Force "New Item" logic
+            collisionCount++;
+        }
+
         if (foundIndex !== -1) {
-            // Preserve the original object's other props if needed, but here we replace
-            // Ensure we don't carry over internal props
+            // UPDATE EXISTING
             const { _original_index, ...cleanItem } = modItem;
-            // Also preserve original index on the target item to keep order/tracking correct if needed?
-            // Actually result[foundIndex] is getting overwritten.
-            // We should ensure the new item has the properties we expect.
             result[foundIndex] = cleanItem;
+
+            // Mark this index as processed so we don't overwrite it again
+            processedIndices.add(foundIndex);
+
             matchedCount++;
         } else {
-            // NEW LOGIC: If no match found, it's a NEW ITEM.
-            console.log("[Merge] No match found. TREATING AS NEW ITEM:", modItem);
+            // INSERT NEW
             const { _original_index, ...newItem } = modItem;
-            // Append to result
             result.push(newItem);
             addedCount++;
         }
     });
 
-    console.log(`[Merge] Result: ${matchedCount} updates (Direct: ${matchedCount - fallbackCount}, Fallback: ${fallbackCount}) and ${addedCount} NEW items. Total count: ${result.length}`);
+    console.log(`[Merge] Result: ${matchedCount} updates (Direct: ${matchedCount - fallbackCount}, Fallback: ${fallbackCount}), ${addedCount} NEW items, ${collisionCount} collisions resolved.`);
     return result;
 }
 
