@@ -226,6 +226,45 @@ export function InvoiceDetails({ result, imageSrc, onClose, title, scanId }: Inv
                     type: 'text' as const
                 };
                 setChatMessages(prev => [...prev, successMessage]);
+
+                // Handle Suggested Rules (Learning)
+                if (responseData?.suggested_rule) {
+                    console.log('[InvoiceDetails] Suggested rule detected:', responseData.suggested_rule);
+
+                    // Small delay to let the UI update first
+                    setTimeout(async () => {
+                        const confirmRule = window.confirm(
+                            `🧠 SIKAI Intelligence:\n\n` +
+                            `He detectado un patrón en tu corrección:\n` +
+                            `"${responseData.suggested_rule.input_pattern}"  👉  "${responseData.suggested_rule.output_product_name}"` +
+                            `${responseData.suggested_rule.output_quantity_factor > 1 ? ` (x${responseData.suggested_rule.output_quantity_factor})` : ''}\n\n` +
+                            `¿Quieres que aplique esta regla automáticamente en el futuro para este proveedor?`
+                        );
+
+                        if (confirmRule) {
+                            try {
+                                const { data: userData } = await supabase.auth.getUser();
+                                const { error: ruleError } = await supabase.from('product_learning').insert({
+                                    provider_name: invoiceData.provider_name,
+                                    input_pattern: responseData.suggested_rule.input_pattern,
+                                    output_product_name: responseData.suggested_rule.output_product_name,
+                                    output_quantity_factor: responseData.suggested_rule.output_quantity_factor,
+                                    user_id: userData.user?.id
+                                });
+
+                                if (ruleError) {
+                                    console.error('[InvoiceDetails] Error saving learning rule:', ruleError);
+                                    alert('Error al guardar la regla: ' + ruleError.message);
+                                } else {
+                                    console.log('[InvoiceDetails] Learning rule saved successfully');
+                                    alert('✅ Regla Aprendida! La aplicaré automáticamente la próxima vez.');
+                                }
+                            } catch (err) {
+                                console.error('[InvoiceDetails] Failed to save rule:', err);
+                            }
+                        }
+                    }, 500);
+                }
             }
 
         } catch (e: any) {

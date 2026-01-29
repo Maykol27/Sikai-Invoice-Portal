@@ -427,26 +427,40 @@ Deno.serve(async (req) => {
 
           parsedResult.items = parsedResult.items.map((item: any) => {
             const rule = rules.find((r: any) => {
-              // Simple substring or exact match check for now
-              // In future could be regex if stored as such
-              return item.description && item.description.includes(r.input_pattern);
+              // Standardize column names to match DB: input_pattern, output_product_name, output_quantity_factor
+              const pattern = r.input_pattern || r.product_pattern;
+              const outputName = r.output_product_name || r.product_name;
+
+              const itemDesc = (item.description || '').toLowerCase();
+              const itemCode = (item.code || '').toLowerCase();
+              const target = (pattern || '').toLowerCase();
+
+              return target && (itemDesc.includes(target) || itemCode.includes(target));
             });
 
             if (rule) {
-              console.log(`Applying rule: ${rule.input_pattern} -> ${rule.output_product_name}`);
-              // Transformation Logic
+              const ruleOutputName = rule.output_product_name || rule.product_name;
+              const ruleFactor = Number(rule.output_quantity_factor || rule.quantity_factor || 1);
+
+              console.log(`Applying rule: ${rule.input_pattern || rule.product_pattern} -> ${ruleOutputName}`);
+
               // 1. Rename
-              item.description = rule.output_product_name;
+              if (ruleOutputName) {
+                item.description = ruleOutputName;
+              }
 
               // 2. Adjust Quantity/Price if factor > 1
-              // If detected "Sixpack", input Qty is 1, but Real Qty is 6.
-              // Unit Price should be divided by 6.
-              const factor = Number(rule.output_quantity_factor) || 1;
-              if (factor > 1) {
-                item.quantity = (item.quantity || 1) * factor;
-                if (item.unit_price) {
-                  item.unit_price = item.unit_price / factor;
+              if (ruleFactor > 1) {
+                const originalQty = Number(item.quantity) || 1;
+                const originalPrice = Number(item.unit_price) || 0;
+
+                item.quantity = originalQty * ruleFactor;
+                if (originalPrice > 0) {
+                  item.unit_price = originalPrice / ruleFactor;
                 }
+
+                // Keep total consistent
+                item.total = item.quantity * item.unit_price;
               }
             }
             return item;

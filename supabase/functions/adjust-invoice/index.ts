@@ -448,11 +448,24 @@ Deno.serve(async (req) => {
          - For ALL NEW ROWS, set the 9th column (original_index) to null.
          - Ensure the mathematical sum of all (Old + New) totals equals the original item total.
       3. If no new rows are required, simply update the existing items preserving their 9th column (original_index).
+      4. PATTERN RECOGNITION:
+         - Analyze if the user's adjustment suggests a repeatable rule for future invoices.
+         - Example: If the user renames "PLx 6 und" to "Pilsen x6" and changes quantity from 1 to 6, this is a rule.
+         - A rule is valid if it targets a specific product description or code that is likely to appear exactly the same way in future scans from the same provider.
 
       ### CRITICAL CONSTRAINTS:
       - The items_matrix is ELASTIC. You MUST add rows for commands like "Create items 1 to 5".
-      - Output ONLY a JSON object with a "result" key containing the "items_matrix".
+      - Output ONLY a JSON object with:
+        - "result": The updated items_matrix.
+        - "suggested_rule": (OPTIONAL) A rule if a repeatable pattern was detected.
       - Do not include comments or explanations in the output.
+
+      ### SUGGESTED RULE STRUCTURE:
+      {
+        "input_pattern": "Original description or part of it that uniquely identifies the product",
+        "output_product_name": "The new, corrected description",
+        "output_quantity_factor": number (The multiplier for quantity. If user changed 1 unit to 6, factor is 6. Default: 1)
+      }
 
       ### EXAMPLE (SPLIT/SEQUENCE):
       Input Matrix: [ ["001", "Servicio", 1, "und", 6000, "0%", 0, 6000, 10] ]
