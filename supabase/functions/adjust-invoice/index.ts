@@ -454,50 +454,31 @@ Deno.serve(async (req) => {
 
         const systemPrompt = `
       You are the SIKAI CX INVOICE STRUCTURE ARCHITECT.
-      Your goal is to RE-ARCHITECT the invoice data based on the User's Voice Command.
-      You have FULL AUTHORITY to create new rows, split existing rows, or restructure the matrix.
+      Your objective is to modify the provided invoice items_matrix based on the USER COMMAND.
 
-      CRITICAL "GOD MODE" INSTRUCTIONS:
-      1. **ROW EXPANSION (THE MOST IMPORTANT RULE)**:
-         - The "items_matrix" is ELASTIC. You MUST add new arrays (rows) to it if the user asks.
-         - Triggers: "Create", "Add", "Generate", "Split into X", "Divide in X", "Make X copies".
-         - If user says "Create 5 items", you MUST output 5 NEW ROWS.
-         - If user says "Create items 1 to 5", you MUST generate a sequence: Item 1, Item 2, Item 3, Item 4, Item 5.
+      ### OPERATIONAL ALGORITHM:
+      1. ANALYZE if the command requires adding new rows (e.g., "add", "create", "split", "divide in X").
+      2. If NEW ROWS are required:
+         - Identify the "Base Item" to be split or used as a template.
+         - Update the "Base Item" row: Reduce its quantity/price to its portion of the total.
+         - CREATE N-1 NEW ROWS to fulfill the user's request.
+         - For ALL NEW ROWS, set the 9th column (original_index) to null.
+         - Ensure the mathematical sum of all (Old + New) totals equals the original item total.
+      3. If no new rows are required, simply update the existing items preserving their 9th column (original_index).
 
-      2. **HANDLING "SPLIT" & "DISTRIBUTE" COMMANDS**:
-         - Scenario: User has 1 item and wants N items total.
-         - Action:
-           a) MODIFY the existing item (reduce its price/qty to approx 1/N).
-           b) GENERATE (N-1) NEW ITEMS to make up the rest.
-           c) **CRITICAL**: The TOTAL of all items (Old + New) must equal the original Total (unless user implies adding value).
-         
-      3. **FORMATTING NEW ROWS**:
-         - New rows MUST have 'original_index' (9th column) as **null**.
-         - Fill other columns with realistic data derived from the original item or user text.
+      ### CRITICAL CONSTRAINTS:
+      - The items_matrix is ELASTIC. You MUST add rows for commands like "Create items 1 to 5".
+      - Output ONLY a JSON object with a "result" key containing the "items_matrix".
+      - Do not include comments or explanations in the output.
 
-      4. **COMPLEX EXAMPLE (THE USER'S EXACT SCENARIO)**:
-         Input Matrix: [ ["OLD-1", "Servicio Profesional", 1, "und", 60000, "0%", 0, 60000, 10] ]
-         User Command: "Crea 5 items más del 1 al 5 y divide el precio y unidades entre los 6 productos"
-         
-         Reasoning:
-         - User wants 6 items total (1 Old + 5 New).
-         - Total amount 60,000 / 6 = 10,000 per item.
-         - Total qty 1 / 6 = 0.16 (or just 1 each if implied). Let's assume 1 each for simplicity if unit is service.
-         - Sequence "1 al 5" means names like "Servicio Profesional 1", "Servicio Profesional 2"...
-
-         Output Matrix: [
-            ["OLD-1", "Servicio Profesional (Base)", 1, "und", 10000, "0%", 0, 10000, 10],  <-- MODIFIED ORIGINAL (1/6th)
-            ["NEW-1", "Servicio Profesional 1",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
-            ["NEW-2", "Servicio Profesional 2",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
-            ["NEW-3", "Servicio Profesional 3",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
-            ["NEW-4", "Servicio Profesional 4",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
-            ["NEW-5", "Servicio Profesional 5",      1, "und", 10000, "0%", 0, 10000, null]  <-- GENERATED
-         ]
-
-      5. **STANDARD OUTPUT RULES**:
-         - Output JSON with keys: "result" (containing "items_matrix").
-         - Preserve columns 0-8 for existing items unless asked to change.
-         - Return ONLY valid JSON.
+      ### EXAMPLE (SPLIT/SEQUENCE):
+      Input Matrix: [ ["001", "Servicio", 1, "und", 6000, "0%", 0, 6000, 10] ]
+      User Command: "Crea 2 items más y divide el precio"
+      Output Matrix: [
+        ["001", "Servicio", 1, "und", 2000, "0%", 0, 2000, 10],
+        ["NEW-1", "Servicio 1", 1, "und", 2000, "0%", 0, 2000, null],
+        ["NEW-2", "Servicio 2", 1, "und", 2000, "0%", 0, 2000, null]
+      ]
     `
 
         const aiPayload = {
@@ -505,7 +486,7 @@ Deno.serve(async (req) => {
                 parts: [
                     { text: systemPrompt },
                     { text: `CURRENT DATA JSON (filtered to relevant items):\n${JSON.stringify(compactData)}` },
-                    { text: `USER COMMAND: "${userPrompt}" }` }
+                    { text: `USER COMMAND: "${userPrompt}"` }
                 ]
             }],
             generationConfig: {
@@ -700,13 +681,8 @@ Deno.serve(async (req) => {
             const { error: historyError } = await supabaseAdmin.from('adjustment_history').insert({
                 scan_id: scanId,
                 user_prompt: userPrompt,
-                // Delta Encoding: Only save the changes (80-95% storage reduction)
                 change_delta: changeDelta,
-                // Keep original_data for backward compatibility and easy restoration
-                // but set to null for subsequent changes to save space
-                original_data: currentData,
-                // adjusted_data removed - can be reconstructed from original + delta
-                adjusted_data: null,
+                previous_data: currentData, // Correct column name
                 created_at: new Date().toISOString()
             })
             if (historyError) console.error("History Log Error:", historyError)
