@@ -590,20 +590,53 @@ Deno.serve(async (req) => {
 
         // EXPAND AND MERGE
         if (parsedResult.items_matrix && Array.isArray(parsedResult.items_matrix) && parsedResult.items_matrix.length > 0) {
-            console.log(`Expanding ${parsedResult.items_matrix.length} items from matrix...`);
+            console.log(`[AI Response] Received ${parsedResult.items_matrix.length} rows from Gemini`);
+            console.log(`[AI Response] First 2 rows:`, JSON.stringify(parsedResult.items_matrix.slice(0, 2)));
+
             const modifiedItems = expandMatrix(parsedResult);
+            console.log(`[Expanded] ${modifiedItems.length} items after expansion`);
+
+            // CRITICAL DEBUG: Check if AI is returning multiple items with same or null index
+            const indexCounts = new Map<string, number>();
+            modifiedItems.forEach(item => {
+                const key = String(item._original_index ?? 'null');
+                indexCounts.set(key, (indexCounts.get(key) || 0) + 1);
+            });
+            console.log(`[Index Analysis]`, Object.fromEntries(indexCounts));
+
+            // EMERGENCY BYPASS FOR CREATION COMMANDS
+            // If user command clearly wants to CREATE items (not just modify),
+            // AND AI returned multiple items BUT they all have the same index,
+            // we should FORCE them all to be new items
+            const isCreationCommand = /crea|crear|agrega|agregar|genera|generar|add|create/i.test(userPrompt);
+            const hasMultipleWithSameIndex = Array.from(indexCounts.values()).some(count => count > 1);
+
+            if (isCreationCommand && hasMultipleWithSameIndex && modifiedItems.length > 1) {
+                console.warn(`[EMERGENCY BYPASS] Creation command detected with ${modifiedItems.length} items sharing indices. Forcing ALL as new items except first.`);
+                // Keep first item with its index, force rest to null
+                modifiedItems.forEach((item, i) => {
+                    if (i > 0) {
+                        item._original_index = null;
+                    }
+                });
+                console.log(`[BYPASS] Modified indices. First keeps original, rest forced to null.`);
+            }
 
             // Merge modified items back into ALL items
             console.log("Merging modified items back to full list...");
             const mergedItems = mergeModifiedItems(allItems, modifiedItems);
+            console.log(`[After Merge] Result has ${mergedItems.length} items (started with ${allItems.length})`);
 
             // Validate: remove hidden index before returning
             const finalItems = mergedItems.map(({ _original_index, ...item }) => item);
 
-            // CRITICAL DATA INTEGRITY CHECK
-            if (finalItems.length !== allItems.length) {
+            // CRITICAL DATA INTEGRITY CHECK - DISABLED FOR CREATION COMMANDS
+            // If user wants to CREATE items, it's EXPECTED that count increases
+            if (!isCreationCommand && finalItems.length !== allItems.length) {
                 console.error(`Data Integrity Critical Failure: Input ${allItems.length} items, Result ${finalItems.length} items.`);
                 throw new Error("Error de integridad: Se detectó pérdida de datos. Operación abortada para proteger la factura.");
+            } else {
+                console.log(`[Integrity Check] ${isCreationCommand ? 'SKIPPED (creation command)' : 'PASSED'}`);
             }
 
             // Recalculate totals based on full list
