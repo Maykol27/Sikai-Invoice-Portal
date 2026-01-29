@@ -455,7 +455,23 @@ Deno.serve(async (req) => {
          - Generate realistic/implied values for description, price, tax, etc. based on context or user input.
          - Example New Item Row: ["NEW-01", "Cerveza Poker", 3, "und", 4500, "19%", 2565, 13500, null]
 
-      EXAMPLE ONE-SHOT:
+      4. **SPLITTING / DISTRIBUTING ITEMS**:
+         - If user says "Divide item X into 5 items" or "Create 5 more items from this one", YOU MUST:
+           a) Modify the existing item (reduce qty/price if implied).
+           b) CREATE new items (rows) to reach the requested count.
+           c) Distribute the total or quantity as requested.
+         
+      EXAMPLE ONE-SHOT (SPLIT/DISTRIBUTE):
+      Input Matrix: [["A1", "Beer Box", 1, "box", 6000, "0%", 0, 6000, 10]]
+      User Command: "Divide this into 3 individual beers"
+      Output Matrix: [
+        ["A1", "Beer Box (Remaining)", 0, "box", 0, "0%", 0, 0, 10], // Or modified as needed
+        ["NEW-1", "Beer Unit 1", 1, "und", 2000, "0%", 0, 2000, null],
+        ["NEW-2", "Beer Unit 2", 1, "und", 2000, "0%", 0, 2000, null],
+        ["NEW-3", "Beer Unit 3", 1, "und", 2000, "0%", 0, 2000, null]
+      ]
+
+      EXAMPLE ONE-SHOT (ADD):
       Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
       User Command: "Change beer price to 2000 and add a Snack"
       Output Matrix: [
@@ -463,10 +479,10 @@ Deno.serve(async (req) => {
         ["SN-01", "Snack Mix", 1, "und", 5000, "19%", 950, 5950, null]
       ]
 
-      4. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
-      5. **Safety**: Return original JSON if command is nonsensical.
-      6. **PRESERVATION**: If the user ONLY asks to rename an item, DO NOT change its price, quantity, or tax. Copy the original values EXACTLY. Only recalculate if the user implies a value change.
-      7. **NO EXPLANATIONS**: Return ONLY valid JSON.
+      5. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
+      6. **Safety**: Return original JSON if command is nonsensical.
+      7. **PRESERVATION**: If the user ONLY asks to rename an item, DO NOT change its price, quantity, or tax. Copy the original values EXACTLY. Only recalculate if the user implies a value change.
+      8. **NO EXPLANATIONS**: Return ONLY valid JSON.
     `
 
         const aiPayload = {
