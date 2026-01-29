@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     console.log(`Calling Gemini Model: ${model}`);
 
     // Updated prompt for better accuracy with complex tables and handwritten text
-    // Updated prompt for SIKAI CX Enterprise Level Extraction v3.5 (Colombian Strict Mode)
+    // Updated prompt for SIKAI CX Enterprise Level Extraction v3.6 (Multi-Item Strict Mode)
     const prompt = `You are the SIKAI CX Intelligence Engine.
     Analyze the provided invoice image and extract ALL available data into a strict JSON format.
     
@@ -190,10 +190,12 @@ Deno.serve(async (req) => {
     
     2. DATES: ISO format YYYY-MM-DD.
     
-    3. ITEMS TABLE (EXTRACT EVERYTHING):
+    3. ITEMS TABLE (EXTRACT *EVERY SINGLE* ROW - CRITICAL):
+       - ⚠️ DO NOT SUMMARIZE. DO NOT SKIP ANY ROW.
+       - If the invoice has 50 items, YOU MUST EXTRACT 50 ROWS.
        - Look for column headers like "Item", "Código", "Descripción", "Cantid", "Vr. Unit", "Total".
-       - "code": Extract the text from the "Código" or "Referencia" column (e.g., "NT-COOL", "NT-CUT").
-       - "description": Extract the FULL multi-line text from the description column. DO NOT TRUNCATE.
+       - "code": Extract the text from the "Código" or "Referencia" column.
+       - "description": Extract the FULL multi-line text from the description column.
        - "tax_rate": Look for "% IVA" or similar.
     
     EXTRACT THESE FIELDS:
@@ -209,20 +211,21 @@ Deno.serve(async (req) => {
        - payment_method
        - order_number
        - remission_number
-
+    
     B. CLIENT INFO:
        - client_name
        - client_nit
        - address
        - city
        - phone
-
+    
     C. ITEMS LIST (Compact Matrix Mode):
        - To save tokens, return items ONLY as an array of arrays named "items_matrix".
        - DO NOT use objects with keys for items.
        - Column Order: [code, description, quantity, unit_measure, unit_price, tax_rate, tax_amount, total]
        - If a value is missing, use null or 0.
-
+       - ⚠️ IMPORTANT: Scan the ENTIRE length of the image for items. Do not stop until you reach the subtotals.
+    
     D. TOTALS:
        - subtotal
        - discount
@@ -230,9 +233,9 @@ Deno.serve(async (req) => {
        - total_iva
        - total_amount (This is the grand total. Ensure it matches the visual "Total de la Operación")
        - amount_text
-
+    
     4. "raw_data": Any extra info.
-
+    
     Required JSON Structure:
     {
       "provider_name": "string",
@@ -252,7 +255,8 @@ Deno.serve(async (req) => {
       "phone": "string",
       "items_matrix": [
          ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total],
-         ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total]
+         ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total],
+         ["...", "...", 0, "...", 0, "...", 0, 0] // EXTRACT ALL ROWS FOUND
       ],
       "subtotal": number,
       "discount": number,
@@ -262,7 +266,7 @@ Deno.serve(async (req) => {
       "amount_text": "string",
       "raw_data": {}
     }
-
+    
     Return ONLY raw JSON. No markdown.`;
 
     const payload = {

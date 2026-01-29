@@ -139,6 +139,7 @@ function mergeModifiedItems(originalItems: any[], modifiedItems: any[]): any[] {
     const result = [...originalItems];
     let matchedCount = 0;
     let fallbackCount = 0;
+    let addedCount = 0;
 
     modifiedItems.forEach(modItem => {
         // Try to match by index first (most reliable)
@@ -183,11 +184,16 @@ function mergeModifiedItems(originalItems: any[], modifiedItems: any[]): any[] {
             result[foundIndex] = cleanItem;
             matchedCount++;
         } else {
-            console.warn("[Merge] Item returned without valid index and no fallback match:", modItem);
+            // NEW LOGIC: If no match found, it's a NEW ITEM.
+            console.log("[Merge] No match found. TREATING AS NEW ITEM:", modItem);
+            const { _original_index, ...newItem } = modItem;
+            // Append to result
+            result.push(newItem);
+            addedCount++;
         }
     });
 
-    console.log(`[Merge] Merged ${matchedCount} items (Direct: ${matchedCount - fallbackCount}, Fallback: ${fallbackCount}) back into ${originalItems.length} total items`);
+    console.log(`[Merge] Result: ${matchedCount} updates (Direct: ${matchedCount - fallbackCount}, Fallback: ${fallbackCount}) and ${addedCount} NEW items. Total count: ${result.length}`);
     return result;
 }
 
@@ -381,7 +387,8 @@ Deno.serve(async (req) => {
         // Add index to items before filtering
         const allItems = expandMatrix(currentData).map((item, idx) => ({ ...item, _original_index: idx }));
 
-        if (allItems.length === 0) {
+        if (allItems.length === 0 && !userPrompt.toLowerCase().includes('add') && !userPrompt.toLowerCase().includes('agregar')) {
+            // Only throw error if we are NOT trying to add items to an empty invoice
             throw new Error("Esta factura parece vacía o corrupta (0 productos encontrados). Por favor intenta escanearla nuevamente.");
         }
 
@@ -411,7 +418,7 @@ Deno.serve(async (req) => {
 
                 if (!listData.models) return 'gemini-1.5-flash';
 
-                const preferences = ['gemini-1.5-flash', 'gemini-1.5-flash-001', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+                const preferences = ['gemini-1.5-flash-8b', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'];
                 for (const pref of preferences) {
                     const found = listData.models.find((m: any) => m.name.endsWith(`/${pref}`) && m.supportedGenerationMethods?.includes('generateContent'));
                     if (found) return found.name.split('/').pop()!;
@@ -439,19 +446,27 @@ Deno.serve(async (req) => {
       CRITICAL FORMAT INSTRUCTIONS:
       1. **OUTPUT FORMAT**: You must return a JSON object with a "result" key.
       2. **ITEMS REPRESENTATION**: Inside "result", you MUST use "items_matrix" (Array of Arrays) for the items.
-         - DO NOT return "items" as an array of objects.
          - Structure: [code, description, quantity, unit, unit_price, 'tax_rate', tax_amount, total, original_index]
-         - **CRITICAL**: The 9th column (original_index) MUST be preserved from input.
+         - **CRITICAL**: The 9th column (original_index) MUST be preserved from input for EXISTING items.
+
+      3. **CREATING NEW ITEMS**:
+         - If the user asks to ADD/CREATE items (e.g. "Add 3 beers", "Agregar 5 productos"), YOU MUST GENERATE NEW ROWS in the matrix.
+         - For NEW items, the 'original_index' (9th col) MUST be NULL.
+         - Generate realistic/implied values for description, price, tax, etc. based on context or user input.
+         - Example New Item Row: ["NEW-01", "Cerveza Poker", 3, "und", 4500, "19%", 2565, 13500, null]
 
       EXAMPLE ONE-SHOT:
       Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
-      User Command: "Change beer price to 2000"
-      Output Matrix: [["A1", "Beer", 10, "und", 2000, "19%", 3800, 23800, 42]]
+      User Command: "Change beer price to 2000 and add a Snack"
+      Output Matrix: [
+        ["A1", "Beer", 10, "und", 2000, "19%", 3800, 23800, 42],
+        ["SN-01", "Snack Mix", 1, "und", 5000, "19%", 950, 5950, null]
+      ]
 
-      3. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
-      4. **Safety**: Return original JSON if command is nonsensical.
-      5. **PRESERVATION**: If the user ONLY asks to rename an item, DO NOT change its price, quantity, or tax. Copy the original values EXACTLY. Only recalculate if the user implies a value change.
-      6. **NO EXPLANATIONS**: Return ONLY valid JSON.
+      4. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
+      5. **Safety**: Return original JSON if command is nonsensical.
+      6. **PRESERVATION**: If the user ONLY asks to rename an item, DO NOT change its price, quantity, or tax. Copy the original values EXACTLY. Only recalculate if the user implies a value change.
+      7. **NO EXPLANATIONS**: Return ONLY valid JSON.
     `
 
         const aiPayload = {
@@ -568,7 +583,7 @@ Deno.serve(async (req) => {
             // FALLBACK: AI returned 'items' array instead of matrix.
             console.warn("AI returned 'items' array instead of 'items_matrix'. Using smart fallback merge.");
 
-            // We use the same items as modified items. 
+            // We use the same items as modified items.
             // mergeModifiedItems has built-in logic to match by Code/Description if _original_index is missing.
             const modifiedItems = parsedResult.items;
 
@@ -587,10 +602,15 @@ Deno.serve(async (req) => {
         const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey || supabaseAnonKey);
         // SAFETY: If no modification applied, do NOT update DB with potentially corrupt data
+        // SAFETY: If no modification applied, do NOT update DB with potentially corrupt data
         if (!modificationApplied) {
             console.warn("No valid modifications applied. Returning original data.");
-            const snippet = rawText ? rawText.substring(0, 300).replace(/\n/g, ' ') : "Empty response";
-            throw new Error(`La IA no devolvió un formato válido. Respuesta (Debug): ${snippet}`);
+
+            // FULL DEBUG MODE: return the entire JSON response from Gemini
+            const allDataDebug = JSON.stringify(data);
+            const snippet = allDataDebug.length > 800 ? allDataDebug.substring(0, 800) + "..." : allDataDebug;
+
+            throw new Error(`La IA falló. Respuesta Técnica: ${snippet}`);
         }
 
         // CLEANUP: Ensure we don't return matrix or internal fields to frontend/DB
