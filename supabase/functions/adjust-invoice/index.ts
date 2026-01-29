@@ -456,10 +456,9 @@ Deno.serve(async (req) => {
          - Example New Item Row: ["NEW-01", "Cerveza Poker", 3, "und", 4500, "19%", 2565, 13500, null]
 
       4. **SPLITTING / DISTRIBUTING ITEMS**:
-         - If user says "Divide item X into 5 items" or "Create 5 more items from this one", YOU MUST:
-           a) Modify the existing item (reduce qty/price if implied).
-           b) CREATE new items (rows) to reach the requested count.
-           c) Distribute the total or quantity as requested.
+         - **CRITICAL**: ONLY generate new rows if the user EXPLICITLY asks to "create more items", "add items", or "split into X items".
+         - If user says "Divide price by 2" or "Divide quantity by 2", JUST PERFORM THE MATH on the existing item. DO NOT create new rows.
+         - If user says "Divide this item into 5 items", THEN create 4 NEW rows.
          
       EXAMPLE ONE-SHOT (SPLIT/DISTRIBUTE):
       Input Matrix: [["A1", "Beer Box", 1, "box", 6000, "0%", 0, 6000, 10]]
@@ -470,6 +469,11 @@ Deno.serve(async (req) => {
         ["NEW-2", "Beer Unit 2", 1, "und", 2000, "0%", 0, 2000, null],
         ["NEW-3", "Beer Unit 3", 1, "und", 2000, "0%", 0, 2000, null]
       ]
+
+      EXAMPLE ONE-SHOT (SIMPLE MATH - NO NEW ROWS):
+      Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
+      User Command: "Divide price by 2"
+      Output Matrix: [["A1", "Beer", 10, "und", 500, "19%", 950, 5950, 42]]
 
       EXAMPLE ONE-SHOT (ADD):
       Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
