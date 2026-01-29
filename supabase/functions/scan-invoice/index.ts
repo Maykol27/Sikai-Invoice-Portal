@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     console.log(`Calling Gemini Model: ${model}`);
 
     // Updated prompt for better accuracy with complex tables and handwritten text
-    // Updated prompt for SIKAI CX Enterprise Level Extraction v3.6 (Multi-Item Strict Mode)
+    // Updated prompt for SIKAI CX Enterprise Level Extraction v3.5 (Colombian Strict Mode)
     const prompt = `You are the SIKAI CX Intelligence Engine.
     Analyze the provided invoice image and extract ALL available data into a strict JSON format.
     
@@ -190,12 +190,10 @@ Deno.serve(async (req) => {
     
     2. DATES: ISO format YYYY-MM-DD.
     
-    3. ITEMS TABLE (EXTRACT *EVERY SINGLE* ROW - CRITICAL):
-       - ⚠️ DO NOT SUMMARIZE. DO NOT SKIP ANY ROW.
-       - If the invoice has 50 items, YOU MUST EXTRACT 50 ROWS.
+    3. ITEMS TABLE (EXTRACT EVERYTHING):
        - Look for column headers like "Item", "Código", "Descripción", "Cantid", "Vr. Unit", "Total".
-       - "code": Extract the text from the "Código" or "Referencia" column.
-       - "description": Extract the FULL multi-line text from the description column.
+       - "code": Extract the text from the "Código" or "Referencia" column (e.g., "NT-COOL", "NT-CUT").
+       - "description": Extract the FULL multi-line text from the description column. DO NOT TRUNCATE.
        - "tax_rate": Look for "% IVA" or similar.
     
     EXTRACT THESE FIELDS:
@@ -224,7 +222,6 @@ Deno.serve(async (req) => {
        - DO NOT use objects with keys for items.
        - Column Order: [code, description, quantity, unit_measure, unit_price, tax_rate, tax_amount, total]
        - If a value is missing, use null or 0.
-       - ⚠️ IMPORTANT: Scan the ENTIRE length of the image for items. Do not stop until you reach the subtotals.
     
     D. TOTALS:
        - subtotal
@@ -255,8 +252,7 @@ Deno.serve(async (req) => {
       "phone": "string",
       "items_matrix": [
          ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total],
-         ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total],
-         ["...", "...", 0, "...", 0, "...", 0, 0] // EXTRACT ALL ROWS FOUND
+         ["code", "description", quantity, "unit", unit_price, "tax_rate", tax_amount, total]
       ],
       "subtotal": number,
       "discount": number,
