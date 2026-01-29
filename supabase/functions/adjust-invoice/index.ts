@@ -220,27 +220,10 @@ function recalculateTotals(data: any, items: any[]): any {
     let totalTax = 0;
 
     items.forEach(item => {
-        subtotal += Number(item.total) || 0; // Assuming item.total is usually (price*qty) before tax? Or after?
-        // Actually, usually:
-        // Item Total = (Price * Qty) + Tax (if included)
-        // Or Item Total = Price * Qty (Net)
-
-        // Let's assume item.total is the final line amount.
-        // And item.tax_amount is the tax.
-
-        // If we want to be precise:
-        // Net = unit_price * quantity
-        // Tax = tax_amount
-        // Line Total = item.total (should be Net + Tax)
-
-        // Let's rely on item properties
-        totalTax += Number(item.tax_amount) || 0;
-
-        // For subtotal, it depends on invoice structure (Net vs Gross)
-        // Let's sum (Total - Tax) as subtotal logic
         const lineTotal = Number(item.total) || 0;
         const lineTax = Number(item.tax_amount) || 0;
-        // If lineTotal includes tax
+
+        totalTax += lineTax;
         subtotal += (lineTotal - lineTax);
     });
 
