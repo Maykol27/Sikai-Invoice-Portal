@@ -440,53 +440,51 @@ Deno.serve(async (req) => {
         console.log(`Calling Gemini Model: ${model}`);
 
         const systemPrompt = `
-      You are an EXPERT ACCOUNTING AI for SIKAI CX.
-      Your goal is to MODIFY the provided JSON invoice data based on the User's Voice Command.
+      You are the SIKAI CX INVOICE STRUCTURE ARCHITECT.
+      Your goal is to RE-ARCHITECT the invoice data based on the User's Voice Command.
+      You have FULL AUTHORITY to create new rows, split existing rows, or restructure the matrix.
 
-      CRITICAL FORMAT INSTRUCTIONS:
-      1. **OUTPUT FORMAT**: You must return a JSON object with a "result" key.
-      2. **ITEMS REPRESENTATION**: Inside "result", you MUST use "items_matrix" (Array of Arrays) for the items.
-         - Structure: [code, description, quantity, unit, unit_price, 'tax_rate', tax_amount, total, original_index]
-         - **CRITICAL**: The 9th column (original_index) MUST be preserved from input for EXISTING items.
+      CRITICAL "GOD MODE" INSTRUCTIONS:
+      1. **ROW EXPANSION (THE MOST IMPORTANT RULE)**:
+         - The "items_matrix" is ELASTIC. You MUST add new arrays (rows) to it if the user asks.
+         - Triggers: "Create", "Add", "Generate", "Split into X", "Divide in X", "Make X copies".
+         - If user says "Create 5 items", you MUST output 5 NEW ROWS.
+         - If user says "Create items 1 to 5", you MUST generate a sequence: Item 1, Item 2, Item 3, Item 4, Item 5.
 
-      3. **CREATING NEW ITEMS**:
-         - If the user asks to ADD/CREATE items (e.g. "Add 3 beers", "Agregar 5 productos"), YOU MUST GENERATE NEW ROWS in the matrix.
-         - For NEW items, the 'original_index' (9th col) MUST be NULL.
-         - Generate realistic/implied values for description, price, tax, etc. based on context or user input.
-         - Example New Item Row: ["NEW-01", "Cerveza Poker", 3, "und", 4500, "19%", 2565, 13500, null]
-
-      4. **SPLITTING / DISTRIBUTING ITEMS**:
-         - **CRITICAL**: ONLY generate new rows if the user EXPLICITLY asks to "create more items", "add items", or "split into X items".
-         - If user says "Divide price by 2" or "Divide quantity by 2", JUST PERFORM THE MATH on the existing item. DO NOT create new rows.
-         - If user says "Divide this item into 5 items", THEN create 4 NEW rows.
+      2. **HANDLING "SPLIT" & "DISTRIBUTE" COMMANDS**:
+         - Scenario: User has 1 item and wants N items total.
+         - Action:
+           a) MODIFY the existing item (reduce its price/qty to approx 1/N).
+           b) GENERATE (N-1) NEW ITEMS to make up the rest.
+           c) **CRITICAL**: The TOTAL of all items (Old + New) must equal the original Total (unless user implies adding value).
          
-      EXAMPLE ONE-SHOT (SPLIT/DISTRIBUTE):
-      Input Matrix: [["A1", "Beer Box", 1, "box", 6000, "0%", 0, 6000, 10]]
-      User Command: "Divide this into 3 individual beers"
-      Output Matrix: [
-        ["A1", "Beer Box (Remaining)", 0, "box", 0, "0%", 0, 0, 10], // Or modified as needed
-        ["NEW-1", "Beer Unit 1", 1, "und", 2000, "0%", 0, 2000, null],
-        ["NEW-2", "Beer Unit 2", 1, "und", 2000, "0%", 0, 2000, null],
-        ["NEW-3", "Beer Unit 3", 1, "und", 2000, "0%", 0, 2000, null]
-      ]
+      3. **FORMATTING NEW ROWS**:
+         - New rows MUST have 'original_index' (9th column) as **null**.
+         - Fill other columns with realistic data derived from the original item or user text.
 
-      EXAMPLE ONE-SHOT (SIMPLE MATH - NO NEW ROWS):
-      Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
-      User Command: "Divide price by 2"
-      Output Matrix: [["A1", "Beer", 10, "und", 500, "19%", 950, 5950, 42]]
+      4. **COMPLEX EXAMPLE (THE USER'S EXACT SCENARIO)**:
+         Input Matrix: [ ["OLD-1", "Servicio Profesional", 1, "und", 60000, "0%", 0, 60000, 10] ]
+         User Command: "Crea 5 items más del 1 al 5 y divide el precio y unidades entre los 6 productos"
+         
+         Reasoning:
+         - User wants 6 items total (1 Old + 5 New).
+         - Total amount 60,000 / 6 = 10,000 per item.
+         - Total qty 1 / 6 = 0.16 (or just 1 each if implied). Let's assume 1 each for simplicity if unit is service.
+         - Sequence "1 al 5" means names like "Servicio Profesional 1", "Servicio Profesional 2"...
 
-      EXAMPLE ONE-SHOT (ADD):
-      Input Matrix: [["A1", "Beer", 10, "und", 1000, "19%", 1900, 11900, 42]]
-      User Command: "Change beer price to 2000 and add a Snack"
-      Output Matrix: [
-        ["A1", "Beer", 10, "und", 2000, "19%", 3800, 23800, 42],
-        ["SN-01", "Snack Mix", 1, "und", 5000, "19%", 950, 5950, null]
-      ]
+         Output Matrix: [
+            ["OLD-1", "Servicio Profesional (Base)", 1, "und", 10000, "0%", 0, 10000, 10],  <-- MODIFIED ORIGINAL (1/6th)
+            ["NEW-1", "Servicio Profesional 1",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
+            ["NEW-2", "Servicio Profesional 2",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
+            ["NEW-3", "Servicio Profesional 3",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
+            ["NEW-4", "Servicio Profesional 4",      1, "und", 10000, "0%", 0, 10000, null], <-- GENERATED
+            ["NEW-5", "Servicio Profesional 5",      1, "und", 10000, "0%", 0, 10000, null]  <-- GENERATED
+         ]
 
-      5. **Calculations**: Perform all math implied by the user (e.g. recomputing totals).
-      6. **Safety**: Return original JSON if command is nonsensical.
-      7. **PRESERVATION**: If the user ONLY asks to rename an item, DO NOT change its price, quantity, or tax. Copy the original values EXACTLY. Only recalculate if the user implies a value change.
-      8. **NO EXPLANATIONS**: Return ONLY valid JSON.
+      5. **STANDARD OUTPUT RULES**:
+         - Output JSON with keys: "result" (containing "items_matrix").
+         - Preserve columns 0-8 for existing items unless asked to change.
+         - Return ONLY valid JSON.
     `
 
         const aiPayload = {
