@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2, RotateCcw, Trash2, Plus, Edit2 } from 'lucide-react';
+import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2, RotateCcw, Trash2, Plus } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { SikaiBrain } from './SikaiBrain';
 import { SikaiBrainChatModal } from './SikaiBrainChatModal';
@@ -532,7 +532,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                         <input
                                             type={isMoney ? "number" : "text"}
                                             className="bg-transparent border-b border-transparent hover:border-sikai-accent/50 focus:border-sikai-accent focus:bg-white/5 w-full outline-none transition-all px-1 -ml-1"
-                                            value={value !== undefined ? value : ''}
+                                            value={value !== undefined ? (value as string | number) : ''}
                                             onClick={(e) => e.stopPropagation()}
                                             onChange={(e) => handleFieldChange(key, isMoney ? parseFloat(e.target.value) : e.target.value)}
                                         />
