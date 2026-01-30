@@ -274,6 +274,17 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
 
     // -------------------------------
 
+    const renderRawDataValue = (value: any) => {
+        if (typeof value === 'object' && value !== null) {
+            return (
+                <div className="text-xs font-mono text-gray-400 overflow-x-auto max-h-40 overflow-y-auto scrollbar-thin">
+                    <pre>{JSON.stringify(value, null, 2)}</pre>
+                </div>
+            );
+        }
+        return <div className="text-sm text-gray-300 break-words">{String(value)}</div>;
+    };
+
     const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
         // Wrap single data in array for generic util
         triggerStandardExport([data], type, `sikai_scan`);
@@ -695,8 +706,8 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                 <div className="p-4 grid grid-cols-2 gap-4">
                                     {Object.entries(data.raw_data).map(([k, v]) => (
                                         <div key={k} className="p-3 bg-black/20 rounded border border-white/5">
-                                            <div className="text-xs text-gray-500 uppercase mb-1">{k}</div>
-                                            <div className="text-sm text-gray-300">{String(v)}</div>
+                                            <div className="text-xs text-gray-500 uppercase mb-2 font-bold">{k}</div>
+                                            {renderRawDataValue(v)}
                                         </div>
                                     ))}
                                 </div>
