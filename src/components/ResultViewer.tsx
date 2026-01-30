@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2, RotateCcw } from 'lucide-react';
+import { Download, CheckCircle, ArrowLeft, Package, Calendar, Building2, MapPin, Phone, User, CreditCard, Clock, FileText, Hash, Receipt, Briefcase, FileCheck, DollarSign, Tag, ChevronDown, Loader2, RotateCcw, Trash2, Plus, Edit2 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { SikaiBrain } from './SikaiBrain';
 import { SikaiBrainChatModal } from './SikaiBrainChatModal';
@@ -220,6 +220,59 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
     const toggleField = (key: string) => {
         setSelectedFields(prev => ({ ...prev, [key]: !prev[key] }));
     };
+
+    // --- Manual Editing Handlers ---
+
+    const handleFieldChange = (key: string, value: any) => {
+        if (!onUpdate) return;
+        const newData = { ...data, [key]: value };
+        onUpdate(newData);
+    };
+
+    const handleItemChange = (index: number, field: string, value: any) => {
+        if (!onUpdate || !data.items) return;
+        const newItems = [...data.items];
+        newItems[index] = { ...newItems[index], [field]: value };
+
+        // Auto-calculate Total if Quantity or Price changes
+        if (field === 'quantity' || field === 'unit_price') {
+            const qty = parseFloat(newItems[index].quantity) || 0;
+            const price = parseFloat(newItems[index].unit_price) || 0;
+            newItems[index].total = qty * price;
+            // Optionally recalc tax if rate exists, but let's keep it simple for now or preserve logic
+            if (newItems[index].tax_rate) {
+                // Simple tax logic could be added here if needed, but risky without parsing "19%" string
+            }
+        }
+
+        onUpdate({ ...data, items: newItems });
+    };
+
+    const handleAddItem = () => {
+        if (!onUpdate) return;
+        const newItem = {
+            code: '',
+            description: '',
+            quantity: 1,
+            unit_measure: 'und',
+            unit_price: 0,
+            tax_rate: '0%',
+            tax_amount: 0,
+            total: 0
+        };
+        const newItems = [...(data.items || []), newItem];
+        onUpdate({ ...data, items: newItems });
+    };
+
+    const handleDeleteItem = (index: number) => {
+        if (!onUpdate || !data.items) return;
+        if (!window.confirm('¿Estás seguro de eliminar este ítem?')) return;
+
+        const newItems = data.items.filter((_: any, i: number) => i !== index);
+        onUpdate({ ...data, items: newItems });
+    };
+
+    // -------------------------------
 
     const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
         // Wrap single data in array for generic util
@@ -472,13 +525,17 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                         </div>
                                     </div>
                                     <div className={cn(
-                                        "text-sm font-medium break-words leading-relaxed",
+                                        "text-sm font-medium break-words leading-relaxed w-full",
                                         "text-gray-900 dark:text-white",
                                         isMoney && "font-mono text-lg tracking-tight text-sikai-accent"
                                     )}>
-                                        {isMoney
-                                            ? formatCurrency(value as number)
-                                            : String(value)}
+                                        <input
+                                            type={isMoney ? "number" : "text"}
+                                            className="bg-transparent border-b border-transparent hover:border-sikai-accent/50 focus:border-sikai-accent focus:bg-white/5 w-full outline-none transition-all px-1 -ml-1"
+                                            value={value !== undefined ? value : ''}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => handleFieldChange(key, isMoney ? parseFloat(e.target.value) : e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             );
@@ -523,27 +580,93 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                                 <th className="py-4 px-4 text-center">IVA %</th>
                                                 <th className="py-4 px-4 text-right">IVA Val.</th>
                                                 <th className="py-4 pr-6 text-right">Total</th>
+                                                <th className="py-4 px-2 w-10"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-800">
                                             {data.items.map((item: any, idx: number) => (
                                                 <tr key={idx} className="hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group">
-                                                    <td className="py-4 pl-6 text-sikai-primary font-mono text-xs">{item.code || '-'}</td>
-                                                    <td className="py-4 px-4 text-gray-700 dark:text-gray-300 text-sm font-medium">{item.description}</td>
-                                                    <td className="py-4 px-4 text-center text-gray-600 dark:text-gray-400 text-sm">{item.quantity}</td>
-                                                    <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.unit_measure || 'Und'}</td>
-                                                    <td className="py-4 px-4 text-right text-gray-700 dark:text-gray-300 text-sm font-mono">
-                                                        {item.unit_price ? formatCurrency(item.unit_price) : '-'}
+                                                    <td className="py-2 pl-4">
+                                                        <input
+                                                            className="bg-transparent w-full text-sikai-primary font-mono text-xs border-b border-transparent focus:border-sikai-primary outline-none"
+                                                            value={item.code || ''}
+                                                            onChange={(e) => handleItemChange(idx, 'code', e.target.value)}
+                                                        />
                                                     </td>
-                                                    <td className="py-4 px-4 text-center text-gray-500 text-xs">{item.tax_rate || '0%'}</td>
-                                                    <td className="py-4 px-4 text-right text-gray-500 text-xs font-mono">
-                                                        {item.tax_amount ? formatCurrency(item.tax_amount) : '-'}
+                                                    <td className="py-2 px-2">
+                                                        <input
+                                                            className="bg-transparent w-full text-gray-700 dark:text-gray-300 text-sm font-medium border-b border-transparent focus:border-sikai-accent outline-none"
+                                                            value={item.description || ''}
+                                                            onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                                                        />
                                                     </td>
-                                                    <td className="py-4 pr-6 text-right text-gray-900 dark:text-white font-bold text-sm font-mono group-hover:text-sikai-primary transition-colors">
-                                                        {item.total ? formatCurrency(item.total) : '-'}
+                                                    <td className="py-2 px-2 text-center">
+                                                        <input
+                                                            type="number"
+                                                            className="bg-transparent w-full text-center text-gray-600 dark:text-gray-400 text-sm border-b border-transparent focus:border-sikai-accent outline-none"
+                                                            value={item.quantity || 0}
+                                                            onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-2 text-center">
+                                                        <input
+                                                            className="bg-transparent w-full text-center text-gray-500 text-xs border-b border-transparent focus:border-sikai-accent outline-none"
+                                                            value={item.unit_measure || ''}
+                                                            onChange={(e) => handleItemChange(idx, 'unit_measure', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-2 text-right">
+                                                        <input
+                                                            type="number"
+                                                            className="bg-transparent w-full text-right text-gray-700 dark:text-gray-300 text-sm font-mono border-b border-transparent focus:border-sikai-accent outline-none"
+                                                            value={item.unit_price || 0}
+                                                            onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-2 text-center">
+                                                        <input
+                                                            className="bg-transparent w-full text-center text-gray-500 text-xs border-b border-transparent focus:border-sikai-accent outline-none"
+                                                            value={item.tax_rate || '0%'}
+                                                            onChange={(e) => handleItemChange(idx, 'tax_rate', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 px-2 text-right">
+                                                        {/* Computed/ReadOnly usually, but editable here */}
+                                                        <input
+                                                            type="number"
+                                                            className="bg-transparent w-full text-right text-gray-500 text-xs font-mono border-b border-transparent focus:border-sikai-accent outline-none"
+                                                            value={item.tax_amount || 0}
+                                                            onChange={(e) => handleItemChange(idx, 'tax_amount', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="py-2 pr-4 text-right">
+                                                        <span className="text-gray-900 dark:text-white font-bold text-sm font-mono block">
+                                                            {item.total ? formatCurrency(item.total) : '$0'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2 px-2 text-center">
+                                                        <button
+                                                            onClick={() => handleDeleteItem(idx)}
+                                                            className="text-gray-600 hover:text-red-500 transition-colors p-1"
+                                                            title="Eliminar fila"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}
+                                            {/* Add Item Row */}
+                                            <tr>
+                                                <td colSpan={9} className="py-4 text-center border-t border-gray-800/50">
+                                                    <button
+                                                        onClick={handleAddItem}
+                                                        className="inline-flex items-center gap-2 text-sikai-accent hover:text-white px-4 py-2 hover:bg-sikai-accent/10 rounded-full transition-colors text-sm font-medium border border-transparent hover:border-sikai-accent/20"
+                                                    >
+                                                        <Plus size={16} />
+                                                        Agregar Producto
+                                                    </button>
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
