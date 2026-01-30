@@ -448,11 +448,11 @@ Deno.serve(async (req) => {
          - For ALL NEW ROWS, set the 9th column (original_index) to null.
          - Ensure the mathematical sum of all (Old + New) totals equals the original item total.
       3. If no new rows are required, simply update the existing items preserving their 9th column (original_index).
-      4. PATTERN RECOGNITION:
-         - Analyze if the user's adjustment suggests a repeatable rule for future invoices.
-         - Example: If the user renames "PLx 6 und" to "Pilsen x6" and changes quantity from 1 to 6, this is a rule.
-         - A rule is valid if it targets a specific product description or code that is likely to appear exactly the same way in future scans from the same provider.
-
+      4. PATTERN RECOGNITION (AGGRESSIVE):
+          - YOUR GOAL is to ALWAYS propose a \`suggested_rule\` if the user is modifying a specific product (e.g. changing description, code, or standardized quantity).
+          - DO NOT decide for the user if it's "worth saving". Always output the rule object if a transformation logic exists.
+          - IF the user modifies a Description or Code, allow them to save it.
+          - Example: "Change tax to 19%" -> This might not be a product rule, but "Change 'Cerv' to 'Cerveza'" IS a rule.
       ### CRITICAL CONSTRAINTS:
       - The items_matrix is ELASTIC. You MUST add rows for commands like "Create items 1 to 5".
       - Output ONLY a JSON object with:
