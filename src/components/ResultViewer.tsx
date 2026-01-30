@@ -285,6 +285,35 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
         return <div className="text-sm text-gray-300 break-words">{String(value)}</div>;
     };
 
+    const RAW_DATA_TRANSLATIONS: Record<string, string> = {
+        'TOTAL_ICO': 'Total Impuesto Consumo',
+        'ITEM_ICO_CHARGES': 'Cargos ICO por Ítem',
+        'PRC_BRUTO_COLUMN_VALUES': 'Valores Brutos',
+        'PLATE': 'Placa / Vehículo',
+        'CONDUCTOR_NAME': 'Conductor',
+        'KILOMETRAJE': 'Kilometraje',
+        'CASHER': 'Cajero',
+        'PUMP': 'Bomba / Surtidor',
+        'PRODUCT': 'Producto',
+        'GALLONS': 'Galones',
+        'DATE': 'Fecha',
+        'TIME': 'Hora',
+        'PAYMENT_METHOD': 'Método de Pago',
+        'DISCREPANCY_SUBTOTAL_SUMMARY_VS_ITEMS': 'Diferencia Subtotal (Resumen vs Ítems)',
+        'DISCREPANCY_TOTAL_AMOUNT_SUMMARY_VS_ITEMS': 'Diferencia Total (Resumen vs Ítems)',
+        'DISCREPANCY_TOTAL_IVA_SUMMARY_VS_ITEMS': 'Diferencia IVA (Resumen vs Ítems)',
+        'ITEM_TOTAL_SUM': 'Suma Total de Ítems',
+        'ITEM_IVA_SUM_FROM_LINES': 'Suma IVA desde Líneas',
+        'ITEM_PRC_BRUTO_SUM': 'Suma Precio Bruto'
+    };
+
+    const formatRawKey = (key: string) => {
+        if (RAW_DATA_TRANSLATIONS[key]) return RAW_DATA_TRANSLATIONS[key];
+        // Fallback: Replace underscores with spaces and capitalize first letter
+        const formatted = key.replace(/_/g, ' ').toLowerCase();
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    };
+
     const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
         // Wrap single data in array for generic util
         triggerStandardExport([data], type, `sikai_scan`);
@@ -706,7 +735,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                 <div className="p-4 grid grid-cols-2 gap-4">
                                     {Object.entries(data.raw_data).map(([k, v]) => (
                                         <div key={k} className="p-3 bg-black/20 rounded border border-white/5">
-                                            <div className="text-xs text-gray-500 uppercase mb-2 font-bold">{k.replace(/_/g, ' ')}</div>
+                                            <div className="text-xs text-gray-500 uppercase mb-2 font-bold">{formatRawKey(k)}</div>
                                             {renderRawDataValue(v)}
                                         </div>
                                     ))}
