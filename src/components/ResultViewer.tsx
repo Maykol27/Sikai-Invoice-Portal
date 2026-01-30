@@ -706,7 +706,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
                                 <div className="p-4 grid grid-cols-2 gap-4">
                                     {Object.entries(data.raw_data).map(([k, v]) => (
                                         <div key={k} className="p-3 bg-black/20 rounded border border-white/5">
-                                            <div className="text-xs text-gray-500 uppercase mb-2 font-bold">{k}</div>
+                                            <div className="text-xs text-gray-500 uppercase mb-2 font-bold">{k.replace(/_/g, ' ')}</div>
                                             {renderRawDataValue(v)}
                                         </div>
                                     ))}
