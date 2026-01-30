@@ -467,15 +467,39 @@ Deno.serve(async (req) => {
         "output_quantity_factor": number (The multiplier for quantity. If user changed 1 unit to 6, factor is 6. Default: 1)
       }
 
-      ### EXAMPLE (SPLIT/SEQUENCE):
-      Input Matrix: [ ["001", "Servicio", 1, "und", 6000, "0%", 0, 6000, 10] ]
-      User Command: "Crea 2 items más y divide el precio"
-      Output Matrix: [
-        ["001", "Servicio", 1, "und", 2000, "0%", 0, 2000, 10],
-        ["NEW-1", "Servicio 1", 1, "und", 2000, "0%", 0, 2000, null],
-        ["NEW-2", "Servicio 2", 1, "und", 2000, "0%", 0, 2000, null]
-      ]
-    `
+      ### EXAMPLES:
+ 
+       EXAMPLE 1 (Standard Modification):
+       Input Matrix: [ ["001", "Servicio", 1, "und", 6000, "0%", 0, 6000, 10] ]
+       User Command: "Crea 2 items más y divide el precio"
+       Output JSON:
+       {
+         "result": {
+           "items_matrix": [
+             ["001", "Servicio", 1, "und", 2000, "0%", 0, 2000, 10],
+             ["NEW-1", "Servicio 1", 1, "und", 2000, "0%", 0, 2000, null],
+             ["NEW-2", "Servicio 2", 1, "und", 2000, "0%", 0, 2000, null]
+           ]
+         }
+       }
+ 
+       EXAMPLE 2 (Pattern Recognition):
+       Input Matrix: [ ["999", "PLx 6 und", 1, "und", 12000, "0%", 0, 12000, 15] ]
+       User Command: "Cambia el nombre a Pilsen x6 y pon cantidad 6"
+       Output JSON:
+       {
+         "result": {
+            "items_matrix": [
+              ["999", "Pilsen x6", 6, "und", 2000, "0%", 0, 12000, 15]
+            ]
+         },
+         "suggested_rule": {
+           "input_pattern": "PLx 6 und",
+           "output_product_name": "Pilsen x6",
+           "output_quantity_factor": 6
+         }
+       }
+     `
 
         const aiPayload = {
             contents: [{
