@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sikai-primary: #1a88ff;
+  --color-sikai-cyan: #26d8c4;
+  --color-sikai-dark: #0a0a0a;
+  --color-sikai-card: #1f1f21;
+  --color-sikai-border: #27272a;
+  
+  /* Mapping legacy names to new palette for compatibility */
+  --color-sikai-accent: #26d8c4; 
+  --color-sikai-bg: #0a0a0a;
+
+  --font-headline: Poppins, sans-serif;
+  --font-body: "PT Sans", sans-serif;
+  --font-code: "Source Code Pro", monospace;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-scan: scan 2s linear infinite;
+  --animate-shimmer: shimmer 1.5s infinite linear;
+  
+  @keyframes scan {
+    0% { top: 0%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-sikai-border);
+}
+
+.scan-line {
+  width: 100%;
+  height: 2px;
+  background: var(--color-sikai-accent);
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 10px var(--color-sikai-accent);
+  resize: vertical; /* just to ensure it's visible if needed, but animation handles top */
+  animation: scan 2s linear infinite;
+  display: none;
+}
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
