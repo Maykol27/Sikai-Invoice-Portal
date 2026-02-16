@@ -1,203 +1,321 @@
-import { useState, useRef } from 'react';
-import { Upload, FileText, Loader2, AlertCircle, Coins } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, Zap, ShieldCheck, Camera, CheckCircle2, XCircle, Loader2, FileText, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
+import { cn } from '../lib/utils';
 
 interface InvoiceScannerProps {
     onScanComplete: (data: any) => void;
 }
 
+interface QueueItem {
+    id: string;
+    file: File;
+    status: 'pending' | 'processing' | 'completed' | 'error';
+    result?: any;
+    errorText?: string;
+}
+
 export function InvoiceScanner({ onScanComplete }: InvoiceScannerProps) {
-    const { user, credits } = useAuth();
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
-    const [fields, setFields] = useState({
-        fecha: true,
-        nit: true,
-        proveedor: true,
-        total: true,
-        iva: false,
-        ciudad: false,
-    });
+    // Bulk Upload State
+    const [uploadQueue, setUploadQueue] = useState<QueueItem[]>([]);
+    const [processedCount, setProcessedCount] = useState(0);
 
-    const toggleField = (key: keyof typeof fields) => {
-        setFields(prev => ({ ...prev, [key]: !prev[key] }));
+    const processQueueItem = async (item: QueueItem) => {
+        try {
+            // Update status to processing
+            setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'processing' } : i));
+
+            const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(item.file);
+            });
+
+
+            const { data, error } = await supabase.functions.invoke('scan-invoice', {
+                body: {
+                    imageBase64: base64,
+                    mimeType: item.file.type,
+                    name: item.file.name
+                }
+            });
+
+            if (error) throw error;
+
+            if (data && data.result) {
+                const combinedResult = { ...data.result, scanId: data.scanId };
+                setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'completed', result: combinedResult } : i));
+            } else {
+                // Check if backend returned a managed error
+                const errMsg = data?.error || "No data returned";
+                console.error("Backend Error Response:", data);
+                throw new Error(errMsg);
+            }
+
+        } catch (error: any) {
+            console.error(`Error processing ${item.file.name}:`, error);
+
+            // Handle Auth Errors Explicitly
+            if (error.message?.includes("Refresh Token") || error.status === 401 || error.message?.includes("Unauthorized")) {
+                // Force logout via Supabase to clear stale storage
+                await supabase.auth.signOut();
+                window.location.reload(); // Hard reload to reset app state
+                return;
+            }
+
+            const friendlyError = error.message || 'Error al procesar';
+            setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', errorText: friendlyError } : i));
+        } finally {
+            setProcessedCount(prev => prev + 1);
+        }
     };
 
-    const processFile = async (file: File) => {
-        if (!file) return;
-        if (!user) {
-            setError("Debes iniciar sesión para escanear facturas.");
+    const processQueue = async (items: QueueItem[]) => {
+        // Sequential processing
+        for (const item of items) {
+            await processQueueItem(item);
+        }
+        setIsScanning(false);
+    };
+
+    const handleBatchUpload = (files: FileList | File[]) => {
+        const fileArray = Array.from(files).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
+
+        if (fileArray.length === 0) return;
+
+        if (fileArray.length > 50) {
+            setUploadError('Máximo 50 facturas a la vez.');
             return;
         }
 
-        setLoading(true);
-        setError(null);
+        setIsScanning(true);
+        setUploadError(null);
+        setProcessedCount(0);
 
-        try {
-            const getBase64 = (file: File): Promise<string> => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => {
-                        const result = reader.result as string;
-                        const base64 = result.split(',')[1];
-                        resolve(base64);
-                    };
-                    reader.onerror = error => reject(error);
-                });
-            };
+        // Initialize Queue
+        const newQueue: QueueItem[] = fileArray.map(file => ({
+            id: Math.random().toString(36).substring(7),
+            file,
+            status: 'pending'
+        }));
 
-            const base64 = await getBase64(file);
+        setUploadQueue(newQueue);
 
-            // Call Edge Function (AI Analysis + Persistence + Credits)
-            const { data: aiData, error: fnError } = await supabase.functions.invoke('scan-invoice', {
-                body: { imageBase64: base64, mimeType: file.type }
-            });
-
-            if (fnError) {
-                // Handle Function Invocation Errors
-                if (fnError.context?.response?.status === 402) {
-                    throw new Error("No tienes suficientes créditos para realizar esta acción.");
-                }
-                throw new Error(`Error de conexión (AI): ${fnError.message}`);
-            }
-
-            if (aiData?.error) {
-                if (aiData.code === 'NO_CREDITS') {
-                    throw new Error("No tienes suficientes créditos para realizar esta acción.");
-                }
-                throw new Error(`Error de análisis: ${aiData.error}`);
-            }
-
-            if (!aiData?.result) throw new Error("No se pudieron extraer datos de la imagen.");
-
-            const result = aiData.result;
-
-            // Success!
-            onScanComplete(result);
-
-        } catch (err: any) {
-            console.error('Full Error:', err);
-            setError(err.message || 'Ocurrió un error desconocido.');
-        } finally {
-            setLoading(false);
-            // Reset input
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
+        // Start processing
+        processQueue(newQueue);
     };
 
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Config Panel */}
-            <div className="lg:col-span-4 space-y-6">
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files.length > 0) {
+            handleBatchUpload(e.dataTransfer.files);
+        }
+    }, []);
 
-                {/* Credits Display */}
-                <div className="glass-panel p-6 rounded-xl shadow-lg border border-sikai-accent/20 bg-sikai-accent/5">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-sikai-accent/20 rounded-lg text-sikai-accent">
-                                <Coins className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="text-white font-bold text-lg">Créditos</h3>
-                                <p className="text-gray-400 text-sm">Disponibles</p>
-                            </div>
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    }, []);
+
+    // If queue is finished and we have results, show summary or allow finish
+    const isQueueFinished = uploadQueue.length > 0 && processedCount === uploadQueue.length;
+    const completedItems = uploadQueue.filter(i => i.status === 'completed');
+
+    return (
+        <div className="h-full flex flex-col justify-center max-w-5xl mx-auto px-4 animate-in fade-in duration-700">
+            {/* Header Content - Compact & Clean */}
+            <div className="text-center mb-8 space-y-2">
+                <h1 className="text-4xl md:text-6xl font-headline font-bold text-gray-900 dark:text-white tracking-tight">
+                    Digitalización <span className="text-sikai-accent drop-shadow-[0_0_15px_rgba(26,136,255,0.4)]">Inteligente</span>
+                </h1>
+                <p className="text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto leading-relaxed">
+                    Extrae datos de tus facturas en segundos con nuestra IA.
+                </p>
+            </div>
+
+            {/* Immersive Drop Zone */}
+            {!isScanning && !isQueueFinished && (
+                <div
+                    className={cn(
+                        "relative w-full aspect-[2/1] md:aspect-[2.5/1] rounded-3xl overflow-hidden transition-all duration-500",
+                        "border border-dashed backdrop-blur-xl group cursor-pointer",
+                        // Light mode styles vs Dark mode styles
+                        "bg-white/80 border-gray-300 hover:border-sikai-accent/50 hover:bg-gray-50",
+                        "dark:bg-black/40 dark:border-gray-700/50 dark:hover:bg-black/60",
+                        isDragging
+                            ? "border-sikai-accent shadow-[0_0_40px_rgba(26,136,255,0.3)] bg-sikai-accent/5"
+                            : "",
+                    )}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => !isScanning && fileInputRef.current?.click()}
+                >
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*,application/pdf"
+                        multiple // Enable multiple files
+                        onChange={(e) => e.target.files && handleBatchUpload(e.target.files)}
+                    />
+
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center transform transition-transform duration-300 group-hover:scale-105">
+                        <div className={cn(
+                            "w-20 h-20 rounded-2xl flex items-center justify-center mb-6 shadow-2xl transition-all duration-300",
+                            // Light mode icon bg
+                            "bg-gradient-to-br from-white to-gray-100 border border-gray-200 text-gray-400",
+                            // Dark mode icon bg
+                            "dark:bg-gradient-to-br dark:from-gray-800 dark:to-black dark:border-white/5 dark:text-gray-400",
+                            isDragging ? "text-sikai-accent border-sikai-accent/50 scale-110" : "group-hover:text-sikai-accent group-hover:border-sikai-accent/30"
+                        )}>
+                            {isDragging ? <Upload size={32} className="animate-bounce" /> : <Upload size={32} />}
                         </div>
-                        <span className="text-3xl font-headline font-bold text-white">
-                            {credits !== null ? credits : '-'}
-                        </span>
+
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight group-hover:text-shadow-glow transition-all">
+                            {isDragging ? '¡Sueltala ya!' : 'Sube tus Facturas'}
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-500 text-sm max-w-sm">
+                            Haz clic o arrastra tus archivos aquí. <br />
+                            <span className="text-xs opacity-60">Soporta JPG, PNG, PDF (Max 50)</span>
+                        </p>
                     </div>
                 </div>
+            )}
 
-                <div className="glass-panel p-6 rounded-xl shadow-2xl relative overflow-hidden group">
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-sikai-accent/20 rounded-full blur-3xl group-hover:bg-sikai-accent/30 transition-all"></div>
+            {/* Queue List / Processing View */}
+            {(isScanning || isQueueFinished) && (
+                <div className="w-full bg-white/80 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/5 overflow-hidden shadow-2xl">
+                    <div className="p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex justify-between items-center">
+                        <div>
+                            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                {isScanning ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin text-sikai-accent" />
+                                        Procesando Lote...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                        Proceso Completado
+                                    </>
+                                )}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                {processedCount} de {uploadQueue.length} archivos procesados
+                            </p>
+                        </div>
+                        {isQueueFinished && (
+                            <button
+                                onClick={() => {
+                                    setUploadQueue([]);
+                                    setProcessedCount(0);
+                                    if (completedItems.length > 0) {
+                                        onScanComplete(completedItems[completedItems.length - 1].result);
+                                    }
+                                }}
+                                className="px-4 py-2 bg-sikai-accent hover:bg-sikai-secondary text-black font-bold text-sm rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                Continuar <ArrowRight size={16} />
+                            </button>
+                        )}
+                    </div>
 
-                    <h3 className="font-headline text-xl font-semibold mb-6 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-sikai-accent" />
-                        Datos a Extraer
-                    </h3>
+                    <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-100 dark:divide-white/5">
+                        {uploadQueue.map((item) => (
+                            <div key={item.id} className="p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className={cn(
+                                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                        item.status === 'completed' ? "bg-green-500/10 text-green-500" :
+                                            item.status === 'error' ? "bg-red-500/10 text-red-500" :
+                                                item.status === 'processing' ? "bg-sikai-accent/10 text-sikai-accent" :
+                                                    "bg-gray-100 dark:bg-white/5 text-gray-400"
+                                    )}>
+                                        <FileText size={16} />
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate max-w-[200px] md:max-w-md">
+                                        {item.file.name}
+                                    </span>
+                                </div>
 
-                    <div className="space-y-4">
-                        {Object.entries(fields).map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between">
-                                <span className="text-gray-300 font-medium capitalize">{key.replace('_', ' ')}</span>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={value}
-                                        onChange={() => toggleField(key as keyof typeof fields)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sikai-accent"></div>
-                                </label>
+                                <div className="flex items-center gap-2">
+                                    {item.status === 'pending' && <span className="text-xs text-gray-400">En cola...</span>}
+                                    {item.status === 'processing' && <Loader2 className="w-4 h-4 animate-spin text-sikai-accent" />}
+                                    {item.status === 'completed' && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                                    {item.status === 'error' && (
+                                        <div className="flex items-center gap-1 text-red-500 text-xs text-right">
+                                            <span>Error</span>
+                                            <XCircle className="w-5 h-5" />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
-                </div>
-            </div>
-
-            {/* Drop Zone */}
-            <div className="lg:col-span-8 space-y-6">
-
-                {error && (
-                    <div className="glass-panel border-red-500/50 bg-red-500/10 p-4 rounded-xl flex items-center gap-3 text-red-200 animate-in slide-in-from-top-2">
-                        <AlertCircle className="w-5 h-5 text-red-400" />
-                        <p>{error}</p>
+                    {/* Progress Bar Bottom */}
+                    <div className="h-1 bg-gray-100 dark:bg-white/5 w-full">
+                        <div
+                            className="h-full bg-sikai-accent transition-all duration-300 ease-out"
+                            style={{ width: `${(processedCount / uploadQueue.length) * 100}%` }}
+                        ></div>
                     </div>
-                )}
-
-                <div
-                    className={cn(
-                        "glass-panel border-2 border-dashed border-gray-700 rounded-xl p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-colors hover:border-sikai-accent hover:bg-gray-900/50 relative overflow-hidden min-h-[400px]",
-                        loading && "opacity-50 pointer-events-none"
-                    )}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                        e.preventDefault();
-                        if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
-                    }}
-                >
-                    {loading ? (
-                        <div className="flex flex-col items-center animate-pulse">
-                            <Loader2 className="w-12 h-12 text-sikai-accent animate-spin mb-4" />
-                            <p className="text-xl font-bold text-white">Procesando con IA...</p>
-                            <p className="text-sm text-gray-400">Extrayendo datos y guardando...</p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="scan-line"></div>
-
-                            <div className="z-10 flex flex-col items-center">
-                                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4 text-sikai-accent">
-                                    <Upload className="w-8 h-8" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-2">Sube tu factura digital</h3>
-                                <p className="text-gray-400 mb-6">Arrastra y suelta o haz clic para explorar</p>
-
-                                <div className="flex gap-3">
-                                    <button className="bg-sikai-accent text-black font-bold px-6 py-2 rounded-full hover:bg-white transition-colors flex items-center gap-2">
-                                        Explorar Archivos
-                                    </button>
-                                </div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                        if (e.target.files?.[0]) processFile(e.target.files[0]);
-                                    }}
-                                />
-                            </div>
-                        </>
-                    )}
                 </div>
-            </div>
+            )}
+
+            {/* Trust Indicators - Only show when not scanning */}
+            {!isScanning && !isQueueFinished && (
+                <div className="mt-8 flex flex-col items-center gap-6">
+                    {/* Camera Action Button */}
+                    <input
+                        type="file"
+                        ref={cameraInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => e.target.files && handleBatchUpload(e.target.files)}
+                    />
+
+                    <button
+                        onClick={() => !isScanning && cameraInputRef.current?.click()}
+                        disabled={isScanning}
+                        className="flex items-center gap-2 px-6 py-3 bg-white/10 dark:bg-black/20 hover:bg-sikai-accent/10 border border-sikai-border hover:border-sikai-accent rounded-full transition-all group"
+                    >
+                        <Camera className="w-5 h-5 text-sikai-accent group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-sikai-accent">Tomar Foto</span>
+                    </button>
+
+                    <div className="flex justify-center gap-6 text-gray-400 dark:text-gray-500 text-xs font-medium tracking-wider uppercase opacity-80 dark:opacity-60">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck size={14} className="text-sikai-secondary" />
+                            <span>Encriptado</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Zap size={14} className="text-sikai-secondary" />
+                            <span>Rápido</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {uploadError && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 rounded-xl text-sm text-center">
+                    {uploadError}
+                </div>
+            )}
         </div>
     );
 }

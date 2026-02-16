@@ -16,50 +16,80 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // Global auth loading state
     const [credits, setCredits] = useState<number | null>(null);
 
     const fetchCredits = async (userId: string) => {
-        const { data, error } = await supabase
-            .from('users_credits')
-            .select('credits')
-            .eq('user_id', userId)
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('users_credits')
+                .select('credits')
+                .eq('user_id', userId)
+                .maybeSingle();
 
-        if (data) {
-            setCredits(data.credits);
-        } else {
-            // Handle case where row doesn't exist yet (signup race condition or error)
-            // Retry or default to 0? Default null/0.
-            console.error("Error fetching credits or no row found:", error);
+            if (!error && data) {
+                setCredits(data.credits);
+            } else {
+                setCredits(0);
+            }
+        } catch {
             setCredits(0);
         }
     };
 
     useEffect(() => {
-        const initSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
-            setUser(session?.user ?? null);
+        let mounted = true;
 
-            if (session?.user) {
-                await fetchCredits(session.user.id);
+        const initSession = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (mounted) {
+                    setSession(session);
+                    setUser(session?.user ?? null);
+
+                    if (session?.user) {
+                        // Don't await credits here to unblock UI faster,
+                        // or await it but ensure we set loading false after.
+                        fetchCredits(session.user.id).catch(() => setCredits(0));
+                    }
+                }
+            } catch (err) {
+                console.error("Auth init error", err);
+            } finally {
+                if (mounted) setLoading(false);
             }
-            setLoading(false);
         };
 
         initSession();
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            // Cast event to string to avoid TS error if types are outdated
+            const eventName = event as string;
 
-            if (session?.user) {
-                await fetchCredits(session.user.id);
-            } else {
+            // If this listener fires immediately after initSession, prevent double loading flicker
+            // but usually strictly needed for SIGN_IN/SIGN_OUT events
+            if (eventName === 'TOKEN_REFRESH_ERRORED') {
+                console.warn('Token refresh failed, forcing sign out');
+                await supabase.auth.signOut();
+                setSession(null);
+                setUser(null);
                 setCredits(null);
+                setLoading(false);
+                return;
             }
-            setLoading(false);
+
+            if (mounted) {
+                setSession(session);
+                setUser(session?.user ?? null);
+
+                if (session?.user) {
+                    fetchCredits(session.user.id).catch(() => setCredits(0));
+                } else {
+                    setCredits(null);
+                }
+                setLoading(false);
+            }
         });
 
         return () => {

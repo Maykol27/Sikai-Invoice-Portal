@@ -7,13 +7,29 @@ import { Pricing } from './components/Pricing';
 import { Login } from './components/Login';
 import { AuthProvider, useAuth } from './lib/auth';
 import { useState } from 'react';
+import { Dashboard } from './components/Dashboard';
 
-import { SikaiLoader } from './components/SikaiLoader';
+import { SplashScreen } from './components/SplashScreen';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <SikaiLoader />;
+  const [splashFinished, setSplashFinished] = useState(false);
+
+  // Show splash until min timer finishes
+  // AND also wait for auth loading to finish so we don't flash login screen if user is actually logged in
+  if (!splashFinished || loading) {
+    return (
+      <SplashScreen
+        onFinish={() => setSplashFinished(true)}
+      // If auth loads fast, we still wait for splash
+      // If auth is slow, splash waits for auth (by not unmounting due to 'loading' check above, but we need to ensure SplashScreen calls onFinish)
+      />
+    );
+  }
+
+  // Once splash is visually done and auth is loaded:
   if (!user) return <Login />;
+
   return <>{children}</>;
 }
 
@@ -21,7 +37,12 @@ function ScannerPage() {
   const [scanResult, setScanResult] = useState<any>(null);
 
   return scanResult ? (
-    <ResultViewer data={scanResult} onReset={() => setScanResult(null)} />
+    <ResultViewer
+      data={scanResult}
+      onReset={() => setScanResult(null)}
+      onUpdate={(newData: any) => setScanResult({ ...newData, scanId: scanResult.scanId })} // Keep scanId on update
+      scanId={scanResult.scanId}
+    />
   ) : (
     <InvoiceScanner onScanComplete={setScanResult} />
   );
@@ -33,17 +54,11 @@ function AppContent() {
       <Routes>
         <Route path="/" element={
           <ProtectedRoute>
-            <div className="text-center mb-12">
-              <h1 className="font-headline text-4xl md:text-5xl font-bold text-white mb-4">
-                Digitalización <span className="text-transparent bg-clip-text bg-gradient-to-r from-sikai-accent to-blue-600">Inteligente</span>
-              </h1>
-              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                Transforma facturas físicas en datos estructurados. Selecciona tus parámetros y deja que la IA haga el resto.
-              </p>
-            </div>
+
             <ScannerPage />
           </ProtectedRoute>
         } />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
         <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
       </Routes>

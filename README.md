@@ -1,73 +1,35 @@
-# React + TypeScript + Vite
+# SIKAI Invoice Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<div align="center">
+  <h3>Enterprise Grade Invoice Processing Intelligence</h3>
+# Sikai Invoice Portal
 
-Currently, two official plugins are available:
+[![Deploy to Firebase Hosting on merge](https://github.com/Maykol27/Sikai-Invoice-Portal/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/Maykol27/Sikai-Invoice-Portal/actions/workflows/firebase-hosting-merge.yml)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Sistema inteligente de gestión de facturas y gastos para Sikai Consulting.
 
-## React Compiler
+## 🚀 Características
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 🌓 **Modo Oscuro/Claro**: Interfaz totalmente adaptable.
+- 📱 **Diseño Responsive**: Funciona en Móvil, Tablet y Desktop.
+- 🚀 **Despliegue Automático**: CI/CD integrado con GitHub Actions y Firebase Hosting.
+- **Extracción de Datos Avanzada**: Motor de IA con "Modo Colombia Estricto" para precisión monetaria y fechas.
+- **UI Inmersiva**: Diseño moderno con Glassmorphism, animaciones de escáner láser y visualización de datos en tiempo real.
+- **Procesamiento Granular**: Detecta automáticamente ítems, códigos, impuestos, resoluciones DIAN y más.
+- **Historial Seguro**: Almacenamiento local y en la nube de facturas procesadas.
 
-## Expanding the ESLint configuration
+## 🛠️ Tecnologías
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Frontend**: React + Vite + TailwindCSS
+- **Backend/IA**: Supabase Edge Functions + Google Gemini 2.0 Flash
+- **Seguridad**: RLS Policies & Secure API Handling
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 📦 Instalación
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Clonar el repositorio.
+2. `npm install`
+3. Configurar variables de entorno en `.env`.
+4. `npm run dev`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+Developed by Sikai Consulting

@@ -1,4 +1,3 @@
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { supabase } from "../lib/supabase";
 import { useState, useEffect } from "react";
 
@@ -17,19 +16,7 @@ export function Pricing() {
         if (data) setCredits(data.credits);
     };
 
-    const handleApprove = async (_data: any, actions: any) => {
-        return actions.order.capture().then(async (_details: any) => {
-            // Call RPC to add credits
-            const { error } = await supabase.rpc('increment_credits', { amount: 10 });
-            if (error) {
-                alert('Error updating credits');
-                console.error(error);
-            } else {
-                alert('Pago exitoso! Créditos añadidos.');
-                fetchCredits();
-            }
-        });
-    };
+
 
     return (
         <div className="max-w-4xl mx-auto text-center space-y-8">
@@ -38,24 +25,16 @@ export function Pricing() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
                 <div className="glass-panel p-8 rounded-xl border-sikai-accent border relative">
-                    <div className="absolute top-0 right-0 bg-sikai-accent text-black text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Paquete Básico</h3>
-                    <p className="text-4xl font-bold text-sikai-accent mb-6">$10.00 <span className="text-sm text-gray-500 font-normal">/ 10 escaneos</span></p>
+                    <div className="absolute top-0 right-0 bg-sikai-accent text-white text-xs font-bold px-3 py-1 rounded-bl-lg">RECOMENDADO</div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Recarga de Saldo</h3>
+                    <p className="text-gray-400 mb-6">Contáctanos para adquirir paquetes de escaneos a medida.</p>
 
-                    <PayPalScriptProvider options={{ clientId: "test" }}>
-                        <PayPalButtons
-                            style={{ layout: "horizontal" }}
-                            createOrder={(_data, actions) => {
-                                return actions.order.create({
-                                    intent: "CAPTURE",
-                                    purchase_units: [{
-                                        amount: { value: "10.00", currency_code: "USD" }
-                                    }]
-                                });
-                            }}
-                            onApprove={handleApprove}
-                        />
-                    </PayPalScriptProvider>
+                    <a
+                        href="mailto:ventas@sikaiconsulting.com?subject=Solicitud de Recarga SIKAI Invoice&body=Hola, deseo recargar mi saldo de créditos."
+                        className="block w-full bg-sikai-accent text-white font-bold py-3 rounded-lg hover:bg-sikai-secondary transition-colors"
+                    >
+                        Contactar Administrador
+                    </a>
                 </div>
 
                 {/* Another plan placeholder */}

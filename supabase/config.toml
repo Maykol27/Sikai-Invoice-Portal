@@ -1,0 +1,2 @@
+[functions.adjust-invoice]
+verify_jwt = false
