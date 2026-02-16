@@ -14,8 +14,7 @@ export const triggerSmartExport = (
         try {
             const data = e.target?.result;
             const workbook = XLSX.read(data, { type: 'binary' });
-            const _sheetName = workbook.SheetNames[0];
-            const _worksheet = workbook.Sheets[_sheetName];
+
 
             // Convert to JSON to inspect structure (optional, depends on needs)
             // But usually for templates we just want to fill specific cells or add rows.
