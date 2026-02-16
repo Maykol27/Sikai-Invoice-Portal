@@ -236,14 +236,13 @@ export const triggerStandardExport = (
             a.href = url;
             a.download = `${fileName}.txt`;
             a.click();
-        } else {
         } else if (type === 'xml') {
             let xmlContent = '<?xml version="1.0" encoding="UTF-8"?>\n<Invoices>\n';
-            
+
             dataList.forEach(data => {
                 const result = data.result || data;
                 xmlContent += '  <Invoice>\n';
-                
+
                 // Add base info
                 xmlContent += `    <Fecha>${result.date || new Date(data.created_at || new Date()).toLocaleDateString()}</Fecha>\n`;
                 xmlContent += `    <Proveedor>${(result.provider_name || 'Desconocido').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Proveedor>\n`;
@@ -270,18 +269,18 @@ export const triggerStandardExport = (
 
                 // Add Raw Data if exists
                 if (result.raw_data && Object.keys(result.raw_data).length > 0) {
-                     xmlContent += '    <DatosAdicionales>\n';
-                     Object.entries(result.raw_data).forEach(([k, v]) => {
-                         xmlContent += `      <${k.replace(/[^a-zA-Z0-9]/g, '_')}>${String(v).replace(/&/g, '&amp;')}</${k.replace(/[^a-zA-Z0-9]/g, '_')}>\n`;
-                     });
-                     xmlContent += '    </DatosAdicionales>\n';
+                    xmlContent += '    <DatosAdicionales>\n';
+                    Object.entries(result.raw_data).forEach(([k, v]) => {
+                        xmlContent += `      <${k.replace(/[^a-zA-Z0-9]/g, '_')}>${String(v).replace(/&/g, '&amp;')}</${k.replace(/[^a-zA-Z0-9]/g, '_')}>\n`;
+                    });
+                    xmlContent += '    </DatosAdicionales>\n';
                 }
 
                 xmlContent += '  </Invoice>\n';
             });
-            
+
             xmlContent += '</Invoices>';
-            
+
             const blob = new Blob([xmlContent], { type: 'application/xml' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
