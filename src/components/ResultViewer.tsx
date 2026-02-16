@@ -314,7 +314,7 @@ export function ResultViewer({ data, onReset, onUpdate, scanId }: ResultViewerPr
         return formatted.charAt(0).toUpperCase() + formatted.slice(1);
     };
 
-    const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
+    const handleStandardExport = (type: 'csv' | 'xlsx' | 'json' | 'txt' | 'xml') => {
         // Wrap single data in array for generic util
         triggerStandardExport([data], type, `sikai_scan`);
         setShowExportMenu(false);

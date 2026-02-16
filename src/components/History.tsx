@@ -58,7 +58,7 @@ export function History() {
         return provider.includes(search) || name.includes(search);
     });
 
-    const handleExport = (type: 'csv' | 'xlsx' | 'json' | 'txt') => {
+    const handleExport = (type: 'csv' | 'xlsx' | 'json' | 'txt' | 'xml') => {
         if (filteredScans.length === 0) return;
         triggerStandardExport(filteredScans, type, `sikai_historial`);
         setShowExportMenu(false);
